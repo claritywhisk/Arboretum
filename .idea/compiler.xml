@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel target="1.7">
+    <bytecodeTargetLevel target="11">
+      <module name="Arboretum.graphics" target="11" />
       <module name="Arboretum.utilityandroid" target="11" />
     </bytecodeTargetLevel>
   </component>
