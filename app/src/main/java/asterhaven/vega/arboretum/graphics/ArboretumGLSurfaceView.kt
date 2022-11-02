@@ -12,5 +12,5 @@ class ArboretumGLSurfaceView(c : Context) : GLSurfaceView(c) {
     }
 
     //make changes on the rendering thread
-    fun updateState(t: Iterable<Drawing>?) = queueEvent { renderer.state = t }
+    fun updateState(t: Iterable<Drawing>) = queueEvent { renderer.state = t }
 }
