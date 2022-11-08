@@ -83,7 +83,7 @@ fun AApp(
                 WorldScreen(viewModel.worldDrawings)
             }
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen()
+                ParamsScreen(viewModel.params)
             }
         }
     }

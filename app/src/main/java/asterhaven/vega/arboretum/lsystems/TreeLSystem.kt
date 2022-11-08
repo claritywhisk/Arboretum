@@ -11,10 +11,11 @@ import java.util.regex.Pattern
 private typealias LStr = Array<LSymbol>
 
 class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg val prod : Rule) {
-    class Builder {
+    class Specification {
         data class Production(val before : String, val after : String)
         private var initial = ArrayList<LSymbol>()
         var constants = HashMap<String, Float>()
+        var constantNames = HashMap<String, String>()
         private var productionsRaw = ArrayList<Production>()
         companion object {
             private const val rxWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
@@ -35,8 +36,9 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                 initial += LSymbol.parse(m.group(1)!!, a)
             }
         }
-        fun constant(vararg c : Pair<String, Float>) {
-            c.forEach { constants[it.first] = it.second }
+        fun constant(symbol : String, value : Float, name : String = "") {
+            constants[symbol] = value
+            constantNames[symbol] = name
         }
         fun production(vararg s : String){
             if(s.size % 2 == 1) throw IllegalArgumentException()
