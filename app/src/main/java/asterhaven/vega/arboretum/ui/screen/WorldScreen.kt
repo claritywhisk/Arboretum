@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
 import asterhaven.vega.arboretum.graphics.ArboretumGLSurfaceView
-import asterhaven.vega.arboretum.graphics.draw.shapes.Drawing
+import asterhaven.vega.arboretum.graphics.draw.Drawing
 
 @Composable
 fun WorldScreen(plantings : List<Drawing>) {

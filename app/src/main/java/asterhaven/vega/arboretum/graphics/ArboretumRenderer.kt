@@ -7,8 +7,9 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import android.os.SystemClock
-import asterhaven.vega.arboretum.graphics.draw.shapes.Drawing
-import asterhaven.vega.arboretum.graphics.draw.shapes.Globe
+import asterhaven.vega.arboretum.graphics.draw.Drawing
+import asterhaven.vega.arboretum.graphics.draw.Globe
+import asterhaven.vega.arboretum.graphics.draw.TreeProgram
 import asterhaven.vega.arboretum.utility.Matrix4X4
 
 class ArboretumRenderer : GLSurfaceView.Renderer {
@@ -63,7 +64,7 @@ class ArboretumRenderer : GLSurfaceView.Renderer {
     }
 
     companion object {
-        val programs = arrayOf(Globe.Companion)
+        val programs = arrayOf(Globe.Companion, TreeProgram)
 
         // create a vertex shader type (GLES20.GL_VERTEX_SHADER)
         // or a fragment shader type (GLES20.GL_FRAGMENT_SHADER)

@@ -1,4 +1,4 @@
-package asterhaven.vega.arboretum.graphics.draw.shapes
+package asterhaven.vega.arboretum.graphics.draw
 
 import android.opengl.GLES20
 import asterhaven.vega.arboretum.utility.COORDS_PER_VERTEX
@@ -26,7 +26,7 @@ class Globe : Drawing() {
                 position(0)
             }
         }
-    override fun draw(mvpMatrix: Matrix4X4) = Companion.draw(mvpMatrix, vertexBuffer, drawListBuffer)
+    override fun draw(mvpMatrix: Matrix4X4) = draw(mvpMatrix, vertexBuffer, drawListBuffer)
     companion object : ProgramLoader() {
         override val vertexShaderCode =
             "uniform mat4 uMVPMatrix;" +

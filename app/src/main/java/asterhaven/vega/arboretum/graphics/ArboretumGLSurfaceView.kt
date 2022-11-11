@@ -2,7 +2,7 @@ package asterhaven.vega.arboretum.graphics
 
 import android.content.Context
 import android.opengl.GLSurfaceView
-import asterhaven.vega.arboretum.graphics.draw.shapes.Drawing
+import asterhaven.vega.arboretum.graphics.draw.Drawing
 
 class ArboretumGLSurfaceView(c : Context) : GLSurfaceView(c) {
     private val renderer = ArboretumRenderer()

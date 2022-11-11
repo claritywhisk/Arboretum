@@ -45,8 +45,6 @@ fun ParameterSetter (
     }
 }
 
-
-
 @Preview
 @Composable
 fun ParamPreview() = ParameterSetter(

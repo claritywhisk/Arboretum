@@ -4,9 +4,8 @@ import androidx.databinding.ObservableArrayList
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import asterhaven.vega.arboretum.graphics.draw.shapes.Drawing
-import asterhaven.vega.arboretum.graphics.draw.shapes.Globe
-import asterhaven.vega.arboretum.lsystems.Systems.page25
+import asterhaven.vega.arboretum.graphics.draw.Drawing
+import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.lsystems.Systems.page60
 
 class ArboretumViewModel : ViewModel() {
@@ -16,8 +15,6 @@ class ArboretumViewModel : ViewModel() {
         //val v = Vector.build(Icosahedron.vdata, 0)
         //drawingsState.add(Tree(v, UnitVector.normalize(v), page60))
     }
-    val fred : LiveData<Param> = MutableLiveData<Param>()
-
 
     class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
         val symbol = symbol
