@@ -6,7 +6,12 @@ import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
+import asterhaven.vega.arboretum.lsystems.Systems.page25
 import asterhaven.vega.arboretum.lsystems.Systems.page60
+import asterhaven.vega.arboretum.lsystems.Tree
+import asterhaven.vega.arboretum.lsystems.TreeLSystem
+import asterhaven.vega.arboretum.lsystems.specify
+import kotlinx.coroutines.*
 
 class ArboretumViewModel : ViewModel() {
     val worldDrawings = ObservableArrayList<Drawing>()
@@ -16,26 +21,39 @@ class ArboretumViewModel : ViewModel() {
         //drawingsState.add(Tree(v, UnitVector.normalize(v), page60))
     }
 
-    class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
-        val symbol = symbol
-        private val _value = MutableLiveData(value)
-        val value : LiveData<Float> = _value
-        fun onValueChange(f : Float){
-            _value.value = f
-        }
-        val name = name
-        val range = range
-    }
 
+    val specification = page60
     val params = arrayListOf<Param>()
     init {
-        page60.constants.forEach {
+        specification.constants.forEach {
             params.add(Param(
                 symbol = it.key,
-                value = it.value,
-                name = page60.constantNames[it.key] ?: "",
+                value = it.value.first,
+                name = it.value.second,
                 range = 0f..100f //todo
             ))
         }
+    }
+    private val _lSystem = MutableLiveData(specification.compile())
+    val lSystem : LiveData<TreeLSystem> = _lSystem
+
+    inner class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
+        val symbol = symbol
+        private val _value = MutableLiveData(value)
+        val value : LiveData<Float> = _value
+        private var vcJob : Job? = null
+        fun onValueChange(f : Float){
+            _value.value = f
+            val last = vcJob
+            vcJob = CoroutineScope(Dispatchers.Default).launch {
+                last?.cancelAndJoin()
+                specification.constant(symbol, f, name)
+                val ls = specification.compile()
+                ensureActive()
+                CoroutineScope(Dispatchers.Main).launch { _lSystem.value = ls }
+            }
+        }
+        val name = name
+        val range = range
     }
 }

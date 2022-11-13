@@ -13,10 +13,9 @@ private typealias LStr = Array<LSymbol>
 class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg val prod : Rule) {
     class Specification {
         data class Production(val before : String, val after : String)
-        private var initial = ArrayList<LSymbol>()
-        var constants = HashMap<String, Float>()
-        var constantNames = HashMap<String, String>()
-        private var productionsRaw = ArrayList<Production>()
+        private val initial = ArrayList<LSymbol>()
+        val constants = HashMap<String, Pair<Float, String>>()
+        private val productionsRaw = ArrayList<Production>()
         companion object {
             private const val rxWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
             private const val rxValidSentence = "($rxWord)+"
@@ -31,14 +30,13 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
             while(m.find()) {
                 val a = when(val p = m.group(3)){
                     null -> Float.NaN
-                    else -> constants[p] ?: p.toFloat()
+                    else -> constants[p]?.first ?: p.toFloat()
                 }
                 initial += LSymbol.parse(m.group(1)!!, a)
             }
         }
         fun constant(symbol : String, value : Float, name : String = "") {
-            constants[symbol] = value
-            constantNames[symbol] = name
+            constants[symbol] = Pair(value, name)
         }
         fun production(vararg s : String){
             if(s.size % 2 == 1) throw IllegalArgumentException()
@@ -54,49 +52,49 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                 productionsRaw.add(it)
             }
         }
-       fun compile() : TreeLSystem {
-           val rules = Array(productionsRaw.size) { rI ->
-               val param = HashMap<String, Int>() //index of variable when reading before string
-               fun template(raw : String, onParam : (String) -> Unit) : LStr {
-                   val m = patWord.matcher(raw)
-                   var x = 0
-                   while(m.find()) x++
-                   m.reset()
-                   return LStr(x){
-                       m.find()
-                       val p = m.group(3)
-                       if(p != null) onParam(p)
-                       LSymbol.parse(m.group(1)!!, Float.NaN)
-                   }
-               }
-               val beforeTemplate = template(productionsRaw[rI].before) {
-                   if(param.containsKey(it)) throw Exception("Duplicate parameter")
-                   if(constants.containsKey(it)) throw Exception("Constant in LHS of production")
-                   param[it] = param.size
-               }
-               val functions = ArrayList<(FloatArray) -> Float>()
-               val afterTemplate = template(productionsRaw[rI].after) {
-                   //this is a possible area to expand logic
-                   //given should be numeric or defined constants, strings in 'param', or * the multiplication sign
-                   var coeff = 1f
-                   val terms : ArrayList<Int> = arrayListOf() //
-                   it.split("*").forEach { token ->
-                       if(constants.containsKey(token)) coeff *= constants[token]!!
-                       else if(param.containsKey(token)) terms.add(param[token]!!)
-                       else {
-                           if(coeff != 1f || terms.size > 0) throw IllegalArgumentException("in RHS of production")
-                           coeff = token.toFloat()
-                       }
-                   }
-                   functions.add { paramArr : FloatArray ->
-                       var a = coeff
-                       terms.forEach{ tI -> a *= paramArr[tI] }
-                       a
-                   }
-               }
-               Rule(beforeTemplate, afterTemplate, *functions.toTypedArray())
-           }
-           return TreeLSystem(initial, *rules)
+        fun compile() : TreeLSystem {
+            val rules = Array(productionsRaw.size) { rI ->
+                val param = HashMap<String, Int>() //index of variable when reading before string
+                fun template(raw : String, onParam : (String) -> Unit) : LStr {
+                    val m = patWord.matcher(raw)
+                    var x = 0
+                    while(m.find()) x++
+                    m.reset()
+                    return LStr(x){
+                        m.find()
+                        val p = m.group(3)
+                        if(p != null) onParam(p)
+                        LSymbol.parse(m.group(1)!!, Float.NaN)
+                    }
+                }
+                val beforeTemplate = template(productionsRaw[rI].before) {
+                    if(param.containsKey(it)) throw Exception("Duplicate parameter")
+                    if(constants.containsKey(it)) throw Exception("Constant in LHS of production")
+                    param[it] = param.size
+                }
+                val functions = ArrayList<(FloatArray) -> Float>()
+                val afterTemplate = template(productionsRaw[rI].after) {
+                    //this is a possible area to expand logic
+                    //given should be numeric or defined constants, strings in 'param', or * the multiplication sign
+                    var coeff = 1f
+                    val terms : ArrayList<Int> = arrayListOf() //
+                    it.split("*").forEach { token ->
+                        if(constants.containsKey(token)) coeff *= constants[token]?.first!!
+                        else if(param.containsKey(token)) terms.add(param[token]!!)
+                        else {
+                            if(coeff != 1f || terms.size > 0) throw IllegalArgumentException("in RHS of production")
+                            coeff = token.toFloat()
+                        }
+                    }
+                    functions.add { paramArr : FloatArray ->
+                        var a = coeff
+                        terms.forEach{ tI -> a *= paramArr[tI] }
+                        a
+                    }
+                }
+                Rule(beforeTemplate, afterTemplate, *functions.toTypedArray())
+            }
+            return TreeLSystem(initial, *rules)
         }
     }
     private class Rule(
@@ -115,6 +113,7 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                     inParams[matchIndex] = s.a
                 }
                 if(++matchIndex == beforeTemplate.size) {
+                    matchIndex = 0
                     var iF = 0
                     return LStr(afterTemplate.size) {
                         val sym = afterTemplate[it]
@@ -150,15 +149,15 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
         fun clearMatch() {
             prod.forEach(Rule::beginMatch)
         }
-        clearMatch()
         repeat(n - givenStep) {
+            clearMatch()
             val new = ArrayList<LSymbol>()
             var l = 0
             fun takeUnmatched(j : Int) {
                 for (i in l..j) new += string[i]
             }
-            letter@for(r in string.indices) for (p in prod.indices) when(
-                val replacement = prod[p].match(string[r])) {
+            letter@for(r in string.indices) for (p in prod.indices)
+                when(val replacement = prod[p].match(string[r])) {
                     null -> continue
                     else -> {
                         val len = prod[p].beforeTemplate.size

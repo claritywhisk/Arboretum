@@ -6,9 +6,9 @@ import asterhaven.vega.arboretum.utility.Vector
 import kotlin.math.PI
 import kotlin.math.atan2
 
-class CommonShape(private val start: Vector,
+class CommonShape(val start: Vector,
                   private val dir: Vector,
-                  private val len: Float,
+                  val len: Float,
                   private val radius: Float
                   ) {
     companion object {

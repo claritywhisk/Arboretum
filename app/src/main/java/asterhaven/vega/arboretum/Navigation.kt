@@ -1,6 +1,7 @@
 package asterhaven.vega.arboretum
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -73,17 +74,17 @@ fun AApp(
             )
         }
     ) { innerPadding ->
-
+        println("paddington" + innerPadding)
         NavHost(
             navController = navController,
             startDestination = ArboretumScreen.Parameters.name,
-            modifier = modifier.padding(innerPadding)
+            modifier = modifier.padding(innerPadding).navigationBarsPadding()
         ) {
-            composable(route = ArboretumScreen.World.name){
+            /*composable(route = ArboretumScreen.World.name){
                 WorldScreen(viewModel.worldDrawings)
-            }
+            }*/
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen(viewModel.params)
+                ParamsScreen(viewModel.params, viewModel.lSystem)
             }
         }
     }

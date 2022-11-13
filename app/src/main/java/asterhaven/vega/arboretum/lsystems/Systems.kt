@@ -27,5 +27,5 @@ object Systems {
     }
 }
 
-private fun specify(lambda : TreeLSystem.Specification.()-> Unit) =
+fun specify(lambda : TreeLSystem.Specification.()-> Unit) =
     TreeLSystem.Specification().apply(lambda)
