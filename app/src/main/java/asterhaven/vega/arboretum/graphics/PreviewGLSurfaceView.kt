@@ -4,7 +4,6 @@ import android.content.Context
 import android.opengl.GLSurfaceView
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import kotlinx.coroutines.*
-import kotlin.system.measureTimeMillis
 
 class PreviewGLSurfaceView(c : Context) : GLSurfaceView(c) {
     private val renderer = PreviewRenderer()
@@ -14,23 +13,23 @@ class PreviewGLSurfaceView(c : Context) : GLSurfaceView(c) {
         renderMode = RENDERMODE_WHEN_DIRTY
     }
 
-    private var previewJob : Job? = null
-    fun updateState(lSystem : TreeLSystem) {
-        val last = previewJob
+    private var job : Job? = null
+    fun beginPreview(lSystem : TreeLSystem) {
         queueEvent { //make changes on the rendering thread
-            previewJob = CoroutineScope(Dispatchers.Default).launch {
-                last?.cancelAndJoin()
-                renderer.newTreeForNewSystem(lSystem)
-                repeat(5) {
-                    ensureActive()
-                    val ms = measureTimeMillis {
-                        renderer.tree.grow() //TODO check memory in or before this
-                        renderer.tree.measure()
+            renderer.newTreeForNewSystem(lSystem)
+            renderer.tree.measure()
+            requestRender()
+            CoroutineScope(Dispatchers.Default).launch {
+                job?.cancelAndJoin()
+                job = CoroutineScope(Dispatchers.Default).launch {
+                    repeat(7) {
+                        delay(125)
+                        queueEvent {
+                            renderer.tree.grow()
+                            renderer.tree.measure()
+                            requestRender()
+                        }
                     }
-                    ensureActive()
-                    if(it != 0) delay(125 - ms)
-                    ensureActive()
-                    requestRender()
                 }
             }
         }

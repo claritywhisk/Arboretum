@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -18,7 +19,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
-import asterhaven.vega.arboretum.ui.screen.WorldScreen
 
 enum class ArboretumScreen(@StringRes val title: Int) {
     World(title = R.string.app_name),
@@ -53,7 +53,7 @@ fun ArboretumAppBar(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AApp(
+fun ArboretumApp(
     modifier: Modifier = Modifier,
     viewModel: ArboretumViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
@@ -64,7 +64,7 @@ fun AApp(
     val currentScreen = ArboretumScreen.valueOf(
         backStackEntry?.destination?.route ?: ArboretumScreen.World.name
     )
-
+    val system = viewModel.lSystem.collectAsState().value
     Scaffold(
         topBar = {
             ArboretumAppBar(
@@ -74,17 +74,18 @@ fun AApp(
             )
         }
     ) { innerPadding ->
-        println("paddington" + innerPadding)
         NavHost(
             navController = navController,
             startDestination = ArboretumScreen.Parameters.name,
-            modifier = modifier.padding(innerPadding).navigationBarsPadding()
+            modifier = modifier
+                .padding(innerPadding)
+                .navigationBarsPadding()
         ) {
             /*composable(route = ArboretumScreen.World.name){
                 WorldScreen(viewModel.worldDrawings)
             }*/
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen(viewModel.params, viewModel.lSystem)
+                ParamsScreen(viewModel.params, system)
             }
         }
     }

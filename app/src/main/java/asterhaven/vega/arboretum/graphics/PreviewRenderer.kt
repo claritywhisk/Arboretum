@@ -23,11 +23,8 @@ class PreviewRenderer : GLSurfaceView.Renderer {
     override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
         GLES20.glClearColor(.3f, 0.6f, 0.4f, 1.0f) //todo
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
-        glDebug("onSurfaceCreated")
         // Load program upon new graphics context
         TreeProgram.load()
-        glDebug()
-        endDebug()
     }
 
     private var ratio by Delegates.notNull<Float>()
