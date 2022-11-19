@@ -22,7 +22,7 @@ class PreviewGLSurfaceView(c : Context) : GLSurfaceView(c) {
             CoroutineScope(Dispatchers.Default).launch {
                 job?.cancelAndJoin()
                 job = CoroutineScope(Dispatchers.Default).launch {
-                    repeat(7) {
+                    repeat(6) {
                         delay(125)
                         queueEvent {
                             renderer.tree.grow()
