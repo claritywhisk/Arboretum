@@ -12,11 +12,8 @@ import kotlinx.coroutines.flow.debounce
 
 @OptIn(FlowPreview::class)
 class ArboretumViewModel : ViewModel() {
-    private val specification = page60
-    val params = arrayListOf<Param>()
-    private val _lSystem = MutableStateFlow(specification.compile())
-    val lSystem : StateFlow<TreeLSystem> = _lSystem
-    init {
+    private val specification by lazy { page60 }
+    val params by lazy { arrayListOf<Param>().also { params ->
         specification.constants.forEach {
             params.add(Param(
                 symbol = it.key,
@@ -25,17 +22,9 @@ class ArboretumViewModel : ViewModel() {
                 range = 0f..100f //todo
             ))
         }
-        params.forEach { p ->
-            viewModelScope.launch {
-                p.value.debounce(50).collectLatest {
-                    synchronized(specification) {
-                        specification.constant(p.symbol, it, p.name)
-                        _lSystem.value = specification.compile()
-                    }
-                }
-            }
-        }
-    }
+    }}
+    private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
+    val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
 
     inner class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
         val symbol = symbol
@@ -43,6 +32,17 @@ class ArboretumViewModel : ViewModel() {
         val value : StateFlow<Float> = _value
         fun onValueChange(f : Float){
             _value.value = f
+        }
+        init {
+            viewModelScope.launch {
+                _value.debounce(30).collectLatest {
+                    synchronized(specification) {
+                        // Update the tree math upon debounced parameter input
+                        specification.constant(symbol, it, name)
+                        _lSystem.value = specification.compile()
+                    }
+                }
+            }
         }
         val name = name
         val range = range

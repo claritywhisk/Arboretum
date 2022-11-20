@@ -1,13 +1,13 @@
 package asterhaven.vega.arboretum.lsystems
 
 object Systems {
-    val page25 = specify {
+    val page25 by lazy { specify {
         constant("δ", 30f)
         initial("!(.05)F(.02)")
         production("F(x)", "F(x)[+(δ)F(x)]F(x)[+(-1*δ)][F(x)]") //pg 25
-    }
+    }}
 
-    val page60 = specify {
+    val page60 by lazy { specify {
         constant("d1", 94.74f, "divergence angle 1")
         constant("d2", 132.63f, "divergence angle 2")
         constant("a", 18.95f, "branching angle")
@@ -24,7 +24,7 @@ object Systems {
             "F(l)", "F(l*lr)",
             "!(w)", "!(w*vr)"
         )
-    }
+    }}
 }
 
 fun specify(lambda : TreeLSystem.Specification.()-> Unit) =

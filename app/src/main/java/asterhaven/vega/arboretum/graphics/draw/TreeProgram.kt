@@ -9,22 +9,23 @@ import asterhaven.vega.arboretum.utility.shapes.UnitCylinder
 private val brown = floatArrayOf(83/255f,53/255f,10/255f, 1f) //todo
 
 object TreeProgram : Drawing.ProgramLoader() {
-    override val vertexShaderCode: String =
+    override val vertexShaderCode by lazy {
                 "uniform mat4 uMVPMatrix;" +
                 "uniform mat4 uBranchTransform;" +
                 "attribute vec4 vUnitCylinder;" +
                 "void main() {" +
                 "  gl_Position = uMVPMatrix * uBranchTransform * vUnitCylinder;" +
                 "}"
+    }
 
-    override val fragmentShaderCode =
+    override val fragmentShaderCode by lazy {
                 "precision mediump float;" +
                 "uniform vec4 vColor;" +
                 "void main() {" +
                 "  gl_FragColor = vColor;" +
                 "}"
-
-    private val branchTransformation = Matrix4X4()
+    }
+    private val branchTransformation by lazy { Matrix4X4() }
     fun draw(branches : ArrayList<CommonShape>, mvpMatrix : Matrix4X4){
         val cylinder = UnitCylinder.get(8) //todo choose number of sides
         GLES20.glUseProgram(programId)

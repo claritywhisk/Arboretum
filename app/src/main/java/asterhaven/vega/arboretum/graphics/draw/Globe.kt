@@ -10,7 +10,7 @@ import java.nio.FloatBuffer
 import java.nio.ShortBuffer
 
 class Globe : Drawing() {
-    private val vertexBuffer : FloatBuffer =
+    private val vertexBuffer by lazy {
         ByteBuffer.allocateDirect(Icosahedron.vdata.size * 4).run {
             order(ByteOrder.nativeOrder())
             asFloatBuffer().apply {
@@ -18,7 +18,8 @@ class Globe : Drawing() {
                 position(0)
             }
         }
-    private val drawListBuffer: ShortBuffer =
+    }
+    private val drawListBuffer by lazy {
         ByteBuffer.allocateDirect(Icosahedron.vDrawOrder.size * 2).run {
             order(ByteOrder.nativeOrder())
             asShortBuffer().apply {
@@ -26,23 +27,24 @@ class Globe : Drawing() {
                 position(0)
             }
         }
+    }
     override fun draw(mvpMatrix: Matrix4X4) = draw(mvpMatrix, vertexBuffer, drawListBuffer)
     companion object : ProgramLoader() {
-        override val vertexShaderCode =
-            "uniform mat4 uMVPMatrix;" +
+        override val vertexShaderCode by lazy {
+                    "uniform mat4 uMVPMatrix;" +
                     "attribute vec4 vPosition;" +
                     "void main() {" +
                     "  gl_Position = uMVPMatrix * vPosition;" +
                     "}"
-
-        override val fragmentShaderCode =
-            "precision mediump float;" +
+        }
+        override val fragmentShaderCode by lazy {
+                    "precision mediump float;" +
                     "uniform vec4 vColor;" +
                     "void main() {" +
                     "  gl_FragColor = vColor;" +
                     "}"
-
-        val color = floatArrayOf(0.13f, 0.24f, 0.57f, 1.0f) //todo
+        }
+        val color by lazy { floatArrayOf(0.13f, 0.24f, 0.57f, 1.0f) }//todo
         //val colorB = floatArrayOf(0.16f, 0.52f, 0.2f, 1.0f)
 
         fun draw(mvpMatrix : Matrix4X4, vertexBuffer : FloatBuffer, drawListBuffer: ShortBuffer){
@@ -83,16 +85,3 @@ class Globe : Drawing() {
         }
     }
 }
-
-/*var gldbcounter = 0
-fun endDebug(){ gldbcounter = 0 }
-fun glDebug(){
-    gldbcounter++
-    val e = GLES20.glGetError()
-    if(e != GLES20.GL_NO_ERROR){
-        println("OPENGL ERROR ${Integer.toHexString(e)} i.e. $e on call $gldbcounter")
-        exitProcess(-555)
-        //Thread.sleep(1000)
-    }
-    else println("passes debug call $gldbcounter")
-}*/

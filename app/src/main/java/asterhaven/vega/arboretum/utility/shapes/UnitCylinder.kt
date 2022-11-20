@@ -7,7 +7,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 object UnitCylinder {
-    private val m : HashMap<Int, DrawBuffers> = HashMap()
+    private val m by lazy { HashMap<Int, DrawBuffers>() }
     fun get(sides : Int) : DrawBuffers {
         val entry = m[sides]
         if(entry != null) return entry

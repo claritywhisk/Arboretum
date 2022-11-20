@@ -12,7 +12,7 @@ class CommonShape(val start: Vector,
                   private val radius: Float
                   ) {
     companion object {
-        val canonicalOrientation = Vector.build(0f,0f,1f)
+        val canonicalOrientation by lazy { Vector.build(0f,0f,1f) }
     }
 
     fun setTransformFromUnitShape(m : Matrix4X4){
