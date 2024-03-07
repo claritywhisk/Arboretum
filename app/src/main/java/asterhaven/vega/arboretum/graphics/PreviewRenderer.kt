@@ -6,6 +6,7 @@ import android.opengl.Matrix
 import asterhaven.vega.arboretum.graphics.draw.TreeProgram
 import asterhaven.vega.arboretum.lsystems.Tree
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
+import asterhaven.vega.arboretum.ui.theme.PurpleGrey40
 import asterhaven.vega.arboretum.utility.*
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
@@ -21,6 +22,9 @@ class PreviewRenderer : GLSurfaceView.Renderer {
     }
 
     override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
+        val background = PurpleGrey40
+        GLES20.glClearColor(background.red, background.green, background.blue, background.alpha)
+
         GLES20.glClearColor(.3f, 0.6f, 0.4f, 1.0f) //todo
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)
         // Load program upon new graphics context

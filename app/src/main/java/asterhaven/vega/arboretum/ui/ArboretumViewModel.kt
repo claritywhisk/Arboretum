@@ -2,6 +2,8 @@ package asterhaven.vega.arboretum.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import asterhaven.vega.arboretum.graphics.draw.Drawing
+import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.lsystems.Systems.page60
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import kotlinx.coroutines.*
@@ -12,7 +14,11 @@ import kotlinx.coroutines.flow.debounce
 
 @OptIn(FlowPreview::class)
 class ArboretumViewModel : ViewModel() {
+    val worldDrawings : List<Drawing> by lazy { arrayListOf(Globe()) }
+
     private val specification by lazy { page60 }
+    private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
+    val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
     val params by lazy { arrayListOf<Param>().also { params ->
         specification.constants.forEach {
             params.add(Param(
@@ -23,9 +29,6 @@ class ArboretumViewModel : ViewModel() {
             ))
         }
     }}
-    private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
-    val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
-
     inner class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
         val symbol = symbol
         private val _value = MutableStateFlow(value)

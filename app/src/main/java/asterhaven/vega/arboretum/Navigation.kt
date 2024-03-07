@@ -4,7 +4,7 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -19,6 +19,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
+import asterhaven.vega.arboretum.ui.screen.WorldScreen
 
 enum class ArboretumScreen(@StringRes val title: Int) {
     World(title = R.string.app_name),
@@ -42,7 +43,7 @@ fun ArboretumAppBar(
             if (canNavigateBack) {
                 IconButton(onClick = navigateUp) {
                     Icon(
-                        imageVector = Icons.Filled.ArrowBack,
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = stringResource(R.string.back_button)
                     )
                 }
@@ -76,14 +77,14 @@ fun ArboretumApp(
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = ArboretumScreen.Parameters.name,
+            startDestination = ArboretumScreen.World.name,
             modifier = modifier
                 .padding(innerPadding)
                 .navigationBarsPadding()
         ) {
-            /*composable(route = ArboretumScreen.World.name){
+            composable(route = ArboretumScreen.World.name){
                 WorldScreen(viewModel.worldDrawings)
-            }*/
+            }
             composable(route = ArboretumScreen.Parameters.name){
                 ParamsScreen(viewModel.params, system)
             }

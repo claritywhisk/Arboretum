@@ -10,6 +10,7 @@ import android.os.SystemClock
 import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.graphics.draw.TreeProgram
+import asterhaven.vega.arboretum.ui.theme.PurpleGrey40
 import asterhaven.vega.arboretum.utility.Matrix4X4
 
 class ArboretumRenderer : GLSurfaceView.Renderer {
@@ -24,7 +25,8 @@ class ArboretumRenderer : GLSurfaceView.Renderer {
 
     override fun onSurfaceCreated(unused: GL10, config: EGLConfig) {
         // Set the background frame color
-        GLES20.glClearColor(.5f, 0.5f, 0.5f, 1.0f) //todo
+        val background = PurpleGrey40
+        GLES20.glClearColor(background.red, background.green, background.blue, background.alpha)
 
         // Avoid seeing the other side of the world etc.
         GLES20.glEnable(GLES20.GL_DEPTH_TEST)

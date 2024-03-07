@@ -18,8 +18,8 @@ abstract class Drawing {
                 GLES20.glAttachShader(it, vertexShader)
                 GLES20.glAttachShader(it, fragmentShader)
                 GLES20.glLinkProgram(it)
-                //GLES20.glDeleteShader(vertexShader) //todo
-                //GLES20.glDeleteShader(fragmentShader)
+                GLES20.glDeleteShader(vertexShader)
+                GLES20.glDeleteShader(fragmentShader)
             }
         }
     }

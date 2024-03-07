@@ -18,7 +18,7 @@ object Turtle {
     object Heading : Axis()
     object Left : Axis()
     object Up : Axis()
-    private class Orientation(val HLU : Matrix4X4){ //[ Heading Left Up ] todo only need 3 dimensional matrix
+    private class Orientation(val HLU : Matrix4X4){ //[ Heading Left Up ]
         constructor(dir : UnitVector) : this(Matrix4X4()) {
             HLU[0] = dir
             // Left should be horizontal

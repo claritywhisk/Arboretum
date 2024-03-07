@@ -1,12 +1,11 @@
 package asterhaven.vega.arboretum.graphics.draw
 
 import android.opengl.GLES20
+import asterhaven.vega.arboretum.ui.theme.TrunkBrown
 import asterhaven.vega.arboretum.utility.COORDS_PER_VERTEX
 import asterhaven.vega.arboretum.utility.Matrix4X4
 import asterhaven.vega.arboretum.utility.shapes.CommonShape
 import asterhaven.vega.arboretum.utility.shapes.UnitCylinder
-
-private val brown = floatArrayOf(83/255f,53/255f,10/255f, 1f) //todo
 
 object TreeProgram : Drawing.ProgramLoader() {
     override val vertexShaderCode by lazy {
@@ -29,7 +28,7 @@ object TreeProgram : Drawing.ProgramLoader() {
     fun draw(branches : ArrayList<CommonShape>, mvpMatrix : Matrix4X4){
         val cylinder = UnitCylinder.get(8) //todo choose number of sides
         GLES20.glUseProgram(programId)
-        GLES20.glUniform4fv(GLES20.glGetUniformLocation(programId, "vColor"), 1, brown, 0)
+        GLES20.glUniform4fv(GLES20.glGetUniformLocation(programId, "vColor"), 1, TrunkBrown, 0)
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(programId, "uMVPMatrix"), 1, false, mvpMatrix.floatArrayValue, 0)
         GLES20.glGetAttribLocation(programId, "vUnitCylinder").also {
             GLES20.glEnableVertexAttribArray(it)
@@ -44,7 +43,7 @@ object TreeProgram : Drawing.ProgramLoader() {
             for(br in branches) {
                 br.setTransformFromUnitShape(branchTransformation)
                 GLES20.glUniform4fv(
-                    GLES20.glGetUniformLocation(programId, "vColor"), 1, brown, 0
+                    GLES20.glGetUniformLocation(programId, "vColor"), 1, TrunkBrown, 0
                 )
                 GLES20.glUniformMatrix4fv(
                     GLES20.glGetUniformLocation(programId, "uMVPMatrix"),
