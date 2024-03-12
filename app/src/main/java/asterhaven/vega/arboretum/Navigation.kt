@@ -1,55 +1,32 @@
 package asterhaven.vega.arboretum
 
+import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
+import asterhaven.vega.arboretum.ui.components.ArboretumTabRow
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
 import asterhaven.vega.arboretum.ui.screen.WorldScreen
 
-enum class ArboretumScreen(@StringRes val title: Int) {
-    World(title = R.string.app_name),
-    Parameters(title = R.string.parameters_title),
-    Rules(title = R.string.rules_title),
-    Collection(title = R.string.collection_title)
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun ArboretumAppBar(
-    currentScreen: ArboretumScreen,
-    canNavigateBack: Boolean,
-    navigateUp: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    TopAppBar(
-        title = { Text(stringResource(currentScreen.title)) },
-        modifier = modifier,
-        navigationIcon = {
-            if (canNavigateBack) {
-                IconButton(onClick = navigateUp) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(R.string.back_button)
-                    )
-                }
-            }
-        }
-    )
+enum class ArboretumScreen(@StringRes val title: Int, @DrawableRes val icon: Int) {
+    World(R.string.app_name, R.drawable.baseline_forest_24),
+    Parameters(R.string.parameters_title, R.drawable.baseline_edit_24)
+    //Rules(title = R.string.rules_title),
+    //Collection(title = R.string.collection_title)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,19 +36,16 @@ fun ArboretumApp(
     viewModel: ArboretumViewModel = viewModel(),
     navController: NavHostController = rememberNavController()
 ) {
-    // Get current back stack entry
-    val backStackEntry by navController.currentBackStackEntryAsState()
-    // Get the name of the current screen
-    val currentScreen = ArboretumScreen.valueOf(
-        backStackEntry?.destination?.route ?: ArboretumScreen.World.name
-    )
-    val system = viewModel.lSystem.collectAsState().value
+    var currentScreen by remember { mutableStateOf(ArboretumScreen.World) }
+    val lSystem = viewModel.lSystem.collectAsState().value
     Scaffold(
         topBar = {
-            ArboretumAppBar(
-                currentScreen = currentScreen,
-                canNavigateBack = navController.previousBackStackEntry != null,
-                navigateUp = { navController.navigateUp() }
+            ArboretumTabRow(
+                onTabSelected = { newScreen ->
+                    navController.navigate(newScreen.name)
+                    currentScreen = newScreen
+                },
+                currentScreen = currentScreen
             )
         }
     ) { innerPadding ->
@@ -86,7 +60,7 @@ fun ArboretumApp(
                 WorldScreen(viewModel.worldDrawings)
             }
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen(viewModel.params, system)
+                ParamsScreen(viewModel.params, lSystem)
             }
         }
     }

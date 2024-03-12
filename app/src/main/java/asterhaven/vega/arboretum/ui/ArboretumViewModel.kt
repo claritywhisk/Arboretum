@@ -29,8 +29,9 @@ class ArboretumViewModel : ViewModel() {
             ))
         }
     }}
-    inner class Param(symbol : String, value : Float, name : String = "", range : ClosedFloatingPointRange<Float>) {
-        val symbol = symbol
+    inner class Param(val symbol : String, value : Float, val name: String = "",
+                      val range: ClosedFloatingPointRange<Float>
+    ) {
         private val _value = MutableStateFlow(value)
         val value : StateFlow<Float> = _value
         fun onValueChange(f : Float){
@@ -47,7 +48,6 @@ class ArboretumViewModel : ViewModel() {
                 }
             }
         }
-        val name = name
-        val range = range
+
     }
 }
