@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "137101558433",
+    "project_id": "arboretum-4915d",
+    "storage_bucket": "arboretum-4915d.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:137101558433:android:d495f8f4548c5c30fbe6e0",
+        "android_client_info": {
+          "package_name": "asterhaven.vega.arboretum"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCUX483fKCQTLh0shbSa6wHTx1YIzDQztA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
