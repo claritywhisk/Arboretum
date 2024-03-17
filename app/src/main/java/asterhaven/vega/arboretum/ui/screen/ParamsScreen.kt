@@ -22,7 +22,7 @@ fun ParamsScreen(
             ::PreviewGLSurfaceView,
             Modifier.aspectRatio(if(collapsed) 3f else 1f)
         ) {
-            it.beginPreview(system)
+            it.launchPreview(system)
         }
         LazyColumn {
             items(params.size, { i -> params[i].symbol }) { i ->
