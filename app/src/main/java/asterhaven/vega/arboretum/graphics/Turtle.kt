@@ -15,9 +15,9 @@ object Turtle {
             get() = orientation.heading
     }
     sealed class Axis
-    object Heading : Axis()
-    object Left : Axis()
-    object Up : Axis()
+    data object Heading : Axis()
+    data object Left : Axis()
+    data object Up : Axis()
     private class Orientation(val HLU : Matrix4X4){ //[ Heading Left Up ]
         constructor(dir : UnitVector) : this(Matrix4X4()) {
             HLU[0] = dir
@@ -40,7 +40,6 @@ object Turtle {
                 Left -> 1
                 Up -> 2
             }]
-            //TODO degrees?!? directions correct and even make sense?
             Matrix.rotateM(HLU.floatArrayValue, 0, angle, axis.x, axis.y, axis.z)
         }
     }

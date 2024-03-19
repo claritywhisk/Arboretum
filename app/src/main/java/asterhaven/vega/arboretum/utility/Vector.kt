@@ -1,15 +1,6 @@
 package asterhaven.vega.arboretum.utility
 
-import kotlin.math.PI
-
 const val COORDS_PER_VERTEX = 3
-
-@JvmInline
-value class AngleDeg(val floatValue : Float){
-    fun asRadians() = AngleRad((PI * floatValue / 180f).toFloat())
-}
-@JvmInline
-value class AngleRad(val floatValue : Float)
 
 @JvmInline
 value class Matrix4X4(val floatArrayValue : FloatArray) {
@@ -60,6 +51,6 @@ data class UnitVector(override var x : Float, override var y : Float, override v
         z /= len
     }
     companion object {
-        fun normalize(v : Vector) = UnitVector(v.x, v.y, v.z)
+        //fun normalize(v : Vector) = UnitVector(v.x, v.y, v.z)
     }
 }
