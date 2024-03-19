@@ -4,7 +4,7 @@ import android.opengl.GLES20
 import android.opengl.GLSurfaceView
 import android.opengl.Matrix
 import asterhaven.vega.arboretum.graphics.draw.TreeProgram
-import asterhaven.vega.arboretum.lsystems.Tree
+import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.ui.theme.PurpleGrey40
 import asterhaven.vega.arboretum.utility.*

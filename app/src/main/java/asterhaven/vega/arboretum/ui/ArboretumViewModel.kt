@@ -19,21 +19,15 @@ class ArboretumViewModel : ViewModel() {
     private val specification by lazy { page60 }
     private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
     val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
-    val params by lazy { arrayListOf<Param>().also { params ->
-        specification.constants.forEach {
-            params.add(Param(
-                symbol = it.key,
-                value = it.value.first,
-                name = it.value.second,
-                range = 0f..100f //todo
-            ))
-        }
+    val params by lazy { arrayListOf<ViewModelParam>().also {
+        it.addAll(specification.parameters.map { sp -> ViewModelParam(sp) })
     }}
-    inner class Param(val symbol : String, value : Float, val name: String = "",
-                      val range: ClosedFloatingPointRange<Float>
-    ) {
-        private val _value = MutableStateFlow(value)
+    inner class ViewModelParam(p : TreeLSystem.Specification.Parameter){
+        private val _value = MutableStateFlow(p.initialValue)
         val value : StateFlow<Float> = _value
+        val range = p.type.range
+        val symbol = p.symbol
+        val name = p.name
         fun onValueChange(f : Float){
             _value.value = f
         }
@@ -42,12 +36,11 @@ class ArboretumViewModel : ViewModel() {
                 _value.debounce(30).collectLatest {
                     synchronized(specification) {
                         // Update the tree math upon debounced parameter input
-                        specification.constant(symbol, it, name)
+                        specification.updateConstant(p.symbol, it)
                         _lSystem.value = specification.compile()
                     }
                 }
             }
         }
-
     }
 }

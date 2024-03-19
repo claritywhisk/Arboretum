@@ -12,11 +12,17 @@ private typealias LStr = Array<LSymbol>
 
 class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg val prod : Rule) {
     class Specification {
-        data class Production(val before : String, val after : String)
+        class Parameter(val symbol : String, val name : String, val type : ParameterType, val initialValue : Float){
+            open class ParameterType(val range : ClosedFloatingPointRange<Float>){
+                constructor(min : Float, max : Float) : this(min .. max)
+            }
+        }
+        val parameters = arrayListOf<Parameter>()
+        private data class Production(val before : String, val after : String)
         private val initial = ArrayList<LSymbol>()
-        val constants = HashMap<String, Pair<Float, String>>()
+        private val constants = HashMap<String, Float>()
         private val productionsRaw = ArrayList<Production>()
-        companion object {
+        private companion object {
             private const val rxWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
             private const val rxValidSentence = "($rxWord)+"
             private val patWord = Pattern.compile(rxWord)
@@ -30,21 +36,34 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
             while(m.find()) {
                 val a = when(val p = m.group(3)){
                     null -> Float.NaN
-                    else -> constants[p]?.first ?: p.toFloat()
+                    else -> constants[p] ?: p.toFloat()
                 }
                 initial += LSymbol.parse(m.group(1)!!, a)
             }
         }
-        fun constant(symbol : String, value : Float, name : String = "") {
-            constants[symbol] = Pair(value, name)
+        fun param(symbol: String, value : Float, name : String = "", type : Parameter.ParameterType){
+            if(constants.containsKey(symbol)) throw IllegalArgumentException("duplicate symbol")
+            if(!type.range.contains(value)) throw IllegalArgumentException("parameter value out of provided range")
+            updateConstant(symbol, value)
+            parameters.add(Parameter(symbol, name, type, value))
+        }
+        fun constant(symbol : String, value : Float, name : String = ""){
+            param(symbol, value, name, TrueConstant(value))
         }
         fun production(vararg s : String){
+            if(s.size != 2) throw IllegalArgumentException()
+            productions(*s)
+        }
+        fun productions(vararg s : String){
             if(s.size % 2 == 1) throw IllegalArgumentException()
             production(*Array(s.size / 2){
                 Production(s[it * 2], s[it * 2 + 1])
             })
         }
-        fun production(vararg p : Production){
+        fun updateConstant(symbol : String, value : Float) {
+            this.constants[symbol] = value
+        }
+        private fun production(vararg p : Production){
             p.forEach {
                 val m1 = patValid.matcher(it.before)
                 val m2 = patValid.matcher(it.after)
@@ -79,7 +98,7 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                     var coeff = 1f
                     val terms : ArrayList<Int> = arrayListOf() //
                     it.split("*").forEach { token ->
-                        if(constants.containsKey(token)) coeff *= constants[token]?.first!!
+                        if(constants.containsKey(token)) coeff *= constants[token]!!
                         else if(param.containsKey(token)) terms.add(param[token]!!)
                         else {
                             if(coeff != 1f || terms.size > 0) throw IllegalArgumentException("in RHS of production")

@@ -1,8 +1,7 @@
-package asterhaven.vega.arboretum.lsystems
+package asterhaven.vega.arboretum.graphics.draw
 
 import asterhaven.vega.arboretum.graphics.Turtle
-import asterhaven.vega.arboretum.graphics.draw.Drawing
-import asterhaven.vega.arboretum.graphics.draw.TreeProgram
+import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.utility.Matrix4X4
 import asterhaven.vega.arboretum.utility.UnitVector
 import asterhaven.vega.arboretum.utility.Vector

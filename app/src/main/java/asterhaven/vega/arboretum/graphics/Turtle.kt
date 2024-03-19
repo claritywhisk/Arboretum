@@ -3,7 +3,7 @@ package asterhaven.vega.arboretum.graphics
 import android.opengl.Matrix
 import asterhaven.vega.arboretum.lsystems.LSymbol
 import asterhaven.vega.arboretum.lsystems.LSymbol.*
-import asterhaven.vega.arboretum.lsystems.Tree
+import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.utility.Matrix4X4
 import asterhaven.vega.arboretum.utility.UnitVector
 import asterhaven.vega.arboretum.utility.Vector
@@ -40,7 +40,7 @@ object Turtle {
                 Left -> 1
                 Up -> 2
             }]
-            //TODO directions correct and even make sense?
+            //TODO degrees?!? directions correct and even make sense?
             Matrix.rotateM(HLU.floatArrayValue, 0, angle, axis.x, axis.y, axis.z)
         }
     }

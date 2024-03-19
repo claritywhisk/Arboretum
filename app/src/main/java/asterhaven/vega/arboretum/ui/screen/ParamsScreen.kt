@@ -13,7 +13,7 @@ import asterhaven.vega.arboretum.ui.components.ParameterSetter
 
 @Composable
 fun ParamsScreen(
-    params : ArrayList<ArboretumViewModel.Param>,
+    params : ArrayList<ArboretumViewModel.ViewModelParam>,
     system : TreeLSystem,
     collapsed : Boolean = true
 ) {

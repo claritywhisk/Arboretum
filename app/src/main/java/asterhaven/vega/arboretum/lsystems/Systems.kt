@@ -8,21 +8,18 @@ object Systems {
     }}
 
     val page60 by lazy { specify {
-        constant("d1", 94.74f, "divergence angle 1")
-        constant("d2", 132.63f, "divergence angle 2")
-        constant("a", 18.95f, "branching angle")
-        constant("lr", 1.109f, "elongation rate")
-        constant("vr", 1.732f, "width increase rate")
-        constant("w0", .0035f)
-        constant("h0", .29f)
-        initial("!(w0)F(h0)/(45)A")
-        production(
-            "A",
-            "!(w0*vr)F(.25*h0)[&(a)F(.25*h0)A]/(d1)[&(a)F(.25*h0)A]/(d2)[&(a)F(.25*h0)A]"
-        )
-        production(
-            "F(l)", "F(l*lr)",
-            "!(w)", "!(w*vr)"
+        param("d₁", 94.74f, "divergence angle 1", AngleNonReflex)
+        param("d₂", 132.63f, "divergence angle 2", AngleNonReflex)
+        param("a", 18.95f, "branching angle", AngleAcute)
+        param("lᵣ", 1.109f, "elongation rate", SecondUnitInterval)
+        param("vᵣ", 1.732f, "width increase rate", SecondUnitInterval)
+        constant("w₀", .0035f)
+        constant("h₀", .29f)
+        initial("!(w₀)F(h₀)/(45)A")
+        productions(
+            "A", "!(w₀*vᵣ)F(.25*h₀)[&(a)F(.25*h₀)A]/(d₁)[&(a)F(.25*h₀)A]/(d₂)[&(a)F(.25*h₀)A]",
+            "F(l)", "F(l*lᵣ)",
+            "!(w)", "!(w*vᵣ)"
         )
     }}
 }

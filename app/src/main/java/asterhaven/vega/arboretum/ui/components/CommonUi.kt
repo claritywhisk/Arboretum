@@ -16,12 +16,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import asterhaven.vega.arboretum.lsystems.TreeLSystem
+import asterhaven.vega.arboretum.lsystems.UnitInterval
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParameterSetter (
-    param : ArboretumViewModel.Param
+    param : ArboretumViewModel.ViewModelParam
 ) {
     val value = param.value.collectAsState().value
     Column {
@@ -48,10 +50,10 @@ fun ParameterSetter (
 @Preview
 @Composable
 fun ParamPreview() = ParameterSetter(
-    ArboretumViewModel().Param(
+    ArboretumViewModel().ViewModelParam(TreeLSystem.Specification.Parameter(
         symbol = "a",
         name = "name",
-        value = .333f,
-        range = 0f.rangeTo(1f)
-    )
+        initialValue = .333f,
+        type = UnitInterval
+    ))
 )
