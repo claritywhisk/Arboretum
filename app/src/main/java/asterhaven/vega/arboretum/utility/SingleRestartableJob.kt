@@ -12,7 +12,7 @@ class SingleRestartableJob(private val dispatcher : CoroutineDispatcher = Dispat
     fun resetThenLaunch(suspendCodeBlock: suspend () -> Unit){
         CoroutineScope(dispatcher).launch {
             job?.cancelAndJoin()
-            synchronized(this) {
+            synchronized(this@SingleRestartableJob) {
                 if (job?.isCompleted != false) job = CoroutineScope(dispatcher).launch {
                     suspendCodeBlock()
                 }
