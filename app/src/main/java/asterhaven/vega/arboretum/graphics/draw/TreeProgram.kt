@@ -3,6 +3,7 @@ package asterhaven.vega.arboretum.graphics.draw
 import android.opengl.GLES20
 import asterhaven.vega.arboretum.ui.theme.TrunkBrown
 import asterhaven.vega.arboretum.utility.COORDS_PER_VERTEX
+import asterhaven.vega.arboretum.utility.CYLINDER_SIDES
 import asterhaven.vega.arboretum.utility.Matrix4X4
 import asterhaven.vega.arboretum.utility.shapes.CommonShape
 import asterhaven.vega.arboretum.utility.shapes.UnitCylinder
@@ -26,7 +27,7 @@ object TreeProgram : Drawing.ProgramLoader() {
     }
     private val branchTransformation by lazy { Matrix4X4() }
     fun draw(branches : ArrayList<CommonShape>, mvpMatrix : Matrix4X4){
-        val cylinder = UnitCylinder.get(8) //todo choose number of sides
+        val cylinder = UnitCylinder.get(CYLINDER_SIDES)
         GLES20.glUseProgram(programId)
         GLES20.glUniform4fv(GLES20.glGetUniformLocation(programId, "vColor"), 1, TrunkBrown, 0)
         GLES20.glUniformMatrix4fv(GLES20.glGetUniformLocation(programId, "uMVPMatrix"), 1, false, mvpMatrix.floatArrayValue, 0)

@@ -50,7 +50,4 @@ data class UnitVector(override var x : Float, override var y : Float, override v
         y /= len
         z /= len
     }
-    companion object {
-        //fun normalize(v : Vector) = UnitVector(v.x, v.y, v.z)
-    }
 }

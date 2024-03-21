@@ -16,41 +16,46 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.lsystems.UnitInterval
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParameterSetter (
-    param : ArboretumViewModel.ViewModelParam
+    paramWrapper : ArboretumViewModel.ViewModelParamWrapper
 ) {
-    val value = param.value.collectAsState().value
+    val value = paramWrapper.valueSF.collectAsState().value
+    val isInt = paramWrapper.p.type is IntParameterType
     Column {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ){
-            Text(param.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
-            Text(param.name, Modifier.weight(1.5f))
+            Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
+            Text(paramWrapper.p.name, Modifier.weight(1.5f))
             TextField(
-                "%.2f".format(value),
-                { it.toFloatOrNull()?.also(param::onValueChange)  },
+                if(isInt) value.roundToInt().toString() else "%.2f".format(value),
+                { newVal -> newVal.toFloatOrNull()?.also(paramWrapper::onValueChange) },
                 Modifier.weight(1f),
                 textStyle = TextStyle(textAlign = TextAlign.Center),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
         }
         Slider( value = value,
-                onValueChange = param::onValueChange,
-                valueRange = param.range)
+                onValueChange = paramWrapper::onValueChange,
+                valueRange = paramWrapper.p.type.range,
+                steps = (if(paramWrapper.p.type is IntParameterType) paramWrapper.p.type.rungsCount() else 0)
+        )
     }
 }
 
 @Preview
 @Composable
 fun ParamPreview() = ParameterSetter(
-    ArboretumViewModel().ViewModelParam(TreeLSystem.Specification.Parameter(
+    ArboretumViewModel().ViewModelParamWrapper(TreeLSystem.Specification.Parameter(
         symbol = "a",
         name = "name",
         initialValue = .333f,

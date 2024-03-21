@@ -1,5 +1,7 @@
 package asterhaven.vega.arboretum.lsystems
 
+import asterhaven.vega.arboretum.utility.DEFAULT_STEPS
+import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
 import java.util.regex.Pattern
 
 /* L-Systems see e.g.
@@ -12,11 +14,7 @@ private typealias LStr = Array<LSymbol>
 
 class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg val prod : Rule) {
     class Specification {
-        class Parameter(val symbol : String, val name : String, val type : ParameterType, val initialValue : Float){
-            open class ParameterType(val range : ClosedFloatingPointRange<Float>){
-                constructor(min : Float, max : Float) : this(min .. max)
-            }
-        }
+        data class Parameter(val symbol : String, val name : String, val type : ParameterType, val initialValue : Float)
         val parameters = arrayListOf<Parameter>()
         private data class Production(val before : String, val after : String)
         private val initial = ArrayList<LSymbol>()
@@ -41,7 +39,7 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                 initial += LSymbol.parse(m.group(1)!!, a)
             }
         }
-        fun param(symbol: String, value : Float, name : String = "", type : Parameter.ParameterType){
+        fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
             if(constants.containsKey(symbol)) throw IllegalArgumentException("duplicate symbol")
             if(!type.range.contains(value)) throw IllegalArgumentException("parameter value out of provided range")
             updateConstant(symbol, value)
@@ -50,6 +48,12 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
         fun constant(symbol : String, value : Float, name : String = ""){
             param(symbol, value, name, TrueConstant(value))
         }
+        fun steps(v : Int, max : Int = v){
+            require(missingStepSuggestion)
+            parameters.add(Parameter("", "Steps", DerivationSteps(max), v.toFloat()))
+            missingStepSuggestion = false
+        }
+        private var missingStepSuggestion = true
         fun production(vararg s : String){
             if(s.size != 2) throw IllegalArgumentException()
             productions(*s)
@@ -60,8 +64,10 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
                 Production(s[it * 2], s[it * 2 + 1])
             })
         }
-        fun updateConstant(symbol : String, value : Float) {
-            this.constants[symbol] = value
+        fun updateConstant(symbol : String, value : Float) : Boolean {
+            if(constants.containsKey(symbol) && constants[symbol] == value) return false
+            constants[symbol] = value
+            return true
         }
         private fun production(vararg p : Production){
             p.forEach {
@@ -72,6 +78,7 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
             }
         }
         fun compile() : TreeLSystem {
+            if(missingStepSuggestion) steps(DEFAULT_STEPS, DEFAULT_STEPS_SLIDER_MAX)
             val rules = Array(productionsRaw.size) { rI ->
                 val param = HashMap<String, Int>() //index of variable when reading before string
                 fun template(raw : String, onParam : (String) -> Unit) : LStr {
