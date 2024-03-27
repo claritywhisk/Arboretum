@@ -4,4 +4,5 @@
     <string name="back_button">Back</string>
     <string name="rules_title">Rules</string>
     <string name="collection_title">Collection</string>
+    <string name="btn_populate">Populate</string>
 </resources>

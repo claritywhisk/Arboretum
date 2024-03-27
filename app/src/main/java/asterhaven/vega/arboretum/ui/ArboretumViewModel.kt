@@ -1,12 +1,17 @@
 package asterhaven.vega.arboretum.ui
 
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
+import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.lsystems.DerivationSteps
 import asterhaven.vega.arboretum.lsystems.Systems.page60
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
+import asterhaven.vega.arboretum.lsystems.TrueConstant
+import asterhaven.vega.arboretum.utility.shapes.Icosahedron
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,14 +20,25 @@ import kotlinx.coroutines.flow.debounce
 
 @OptIn(FlowPreview::class)
 class ArboretumViewModel : ViewModel() {
-    val worldDrawings : List<Drawing> by lazy { arrayListOf(Globe()) }
+    private val _worldDrawings = mutableStateOf(mutableListOf<Drawing>(Globe()))
+    val worldDrawings : State<List<Drawing>> get() = _worldDrawings
 
     private val specification by lazy { page60 }
     private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
     val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
 
-    val params by lazy { arrayListOf<ViewModelParamWrapper>().also {
-        it.addAll(specification.parameters.map { sp -> ViewModelParamWrapper(sp) })
+    fun populateAction(steps : Int){
+        val trees = Icosahedron.stems.map { Tree(it, lSystem.value, steps) }
+        val newList = mutableListOf<Drawing>()
+        newList.addAll(_worldDrawings.value.filter { it !is Tree })
+        newList.addAll(trees)
+        _worldDrawings.value = newList
+    }
+
+    val params by lazy { arrayListOf<ViewModelParamWrapper>().apply {
+        addAll(specification.parameters.filter { p ->
+            p.type !is TrueConstant
+        }.map { sp -> ViewModelParamWrapper(sp) })
     }}
 
     inner class ViewModelParamWrapper(val p : TreeLSystem.Specification.Parameter){

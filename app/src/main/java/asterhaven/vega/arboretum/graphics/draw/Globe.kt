@@ -1,6 +1,7 @@
 package asterhaven.vega.arboretum.graphics.draw
 
 import android.opengl.GLES20
+import asterhaven.vega.arboretum.ui.theme.Land
 import asterhaven.vega.arboretum.ui.theme.SeaBlue
 import asterhaven.vega.arboretum.utility.COORDS_PER_VERTEX
 import asterhaven.vega.arboretum.utility.Matrix4X4
@@ -67,7 +68,7 @@ class Globe : Drawing() {
 
                 // get handle to fragment shader's vColor member and set color
                 val mColorHandle = GLES20.glGetUniformLocation(programId, "vColor")
-                GLES20.glUniform4fv(mColorHandle, 1, SeaBlue, 0)
+                GLES20.glUniform4fv(mColorHandle, 1, Land, 0)
 
                 // get handle to shape's transformation matrix
                 val vPMatrixHandle = GLES20.glGetUniformLocation(programId, "uMVPMatrix")

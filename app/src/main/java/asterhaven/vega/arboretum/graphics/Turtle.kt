@@ -5,6 +5,7 @@ import asterhaven.vega.arboretum.lsystems.LSymbol
 import asterhaven.vega.arboretum.lsystems.LSymbol.*
 import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.utility.Matrix4X4
+import asterhaven.vega.arboretum.utility.Ray
 import asterhaven.vega.arboretum.utility.UnitVector
 import asterhaven.vega.arboretum.utility.Vector
 import asterhaven.vega.arboretum.utility.shapes.CommonShape
@@ -44,8 +45,8 @@ object Turtle {
         }
     }
 
-    fun graphTree(string : Iterable<LSymbol>, beginAt : Vector, beginFacing : UnitVector) : Tree.Structure {
-        val stack : ArrayDeque<State> = ArrayDeque(listOf(State(beginAt, Orientation(beginFacing))))
+    fun graphTree(string : Iterable<LSymbol>, posDir : Ray) : Tree.Structure {
+        val stack : ArrayDeque<State> = ArrayDeque(listOf(State(posDir.xyz, Orientation(posDir.dir))))
         val branches : ArrayList<CommonShape> = arrayListOf()
         var width = -1f
         for(s in string) when(s){

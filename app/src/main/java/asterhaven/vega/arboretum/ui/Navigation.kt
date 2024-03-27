@@ -1,4 +1,4 @@
-package asterhaven.vega.arboretum
+package asterhaven.vega.arboretum.ui
 
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
@@ -12,12 +12,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
-import asterhaven.vega.arboretum.ui.ArboretumViewModel
+import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.ui.components.ArboretumTabRow
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
 import asterhaven.vega.arboretum.ui.screen.WorldScreen
@@ -33,35 +32,43 @@ enum class ArboretumScreen(@StringRes val title: Int, @DrawableRes val icon: Int
 @Composable
 fun ArboretumApp(
     modifier: Modifier = Modifier,
-    viewModel: ArboretumViewModel = viewModel(),
+    viewModel: ArboretumViewModel,
     navController: NavHostController = rememberNavController()
 ) {
-    var currentScreen by remember { mutableStateOf(ArboretumScreen.World) }
+    val startTab = ArboretumScreen.Parameters
+    var currentScreen by remember { mutableStateOf(startTab) }
     val lSystem = viewModel.lSystem.collectAsState().value
+
+    fun navigateTo(newScreen : ArboretumScreen) {
+        navController.navigate(newScreen.name)
+        currentScreen = newScreen
+    }
+
     Scaffold(
         topBar = {
             ArboretumTabRow(
-                onTabSelected = { newScreen ->
-                    navController.navigate(newScreen.name)
-                    currentScreen = newScreen
-                },
+                onTabSelected = ::navigateTo,
                 currentScreen = currentScreen
             )
         }
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = ArboretumScreen.World.name,
+            startDestination = startTab.name,
             modifier = modifier
                 .padding(innerPadding)
                 .navigationBarsPadding()
         ) {
             composable(route = ArboretumScreen.World.name){
-                WorldScreen(viewModel.worldDrawings)
+                WorldScreen(viewModel.worldDrawings.value)
             }
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen(viewModel.params, lSystem)
+                ParamsScreen(viewModel.params, lSystem, { steps ->
+                    navigateTo(ArboretumScreen.World)
+                    viewModel.populateAction(steps)
+                })
             }
         }
     }
 }
+
