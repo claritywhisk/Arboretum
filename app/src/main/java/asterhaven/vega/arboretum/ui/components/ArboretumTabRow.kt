@@ -48,7 +48,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import asterhaven.vega.arboretum.ArboretumScreen
+import asterhaven.vega.arboretum.ui.ArboretumScreen
 import java.util.Locale
 
 @Composable

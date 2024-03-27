@@ -3,25 +3,22 @@ package asterhaven.vega.arboretum.graphics.draw
 import asterhaven.vega.arboretum.graphics.Turtle
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.utility.Matrix4X4
-import asterhaven.vega.arboretum.utility.UnitVector
-import asterhaven.vega.arboretum.utility.Vector
+import asterhaven.vega.arboretum.utility.Ray
 import asterhaven.vega.arboretum.utility.shapes.CommonShape
 import java.lang.Float.max
 import java.lang.Float.min
 
 class Tree (
-    private val baseXYZ : Vector,
-    private val up : UnitVector,
+    private val stemLine : Ray,
     private val system : TreeLSystem,
-    n : Int
+    val desiredAge : Int = 0,
+    initialAge : Int = 0
 ) : Drawing() {
-    constructor(b: Vector, u: UnitVector, s: TreeLSystem) : this(b, u, s, 0)
-
-    // number of steps grown & the string representing the mathematical structure there
-    private var mathematicalAge = 0
     init {
-        grow(n)
+        grow(initialAge)
     }
+    // number of steps grown & the string representing the mathematical structure there
+    var mathematicalAge = 0
 
     // "wireframe" object before cylinder resolution
     data class Structure(val branches : ArrayList<CommonShape>, val leaves : ArrayList<CommonShape>)
@@ -30,7 +27,7 @@ class Tree (
     fun grow() = grow(1)
     fun grow(steps : Int){
         mathematicalAge += steps
-        structure = Turtle.graphTree(system.valueForStep(mathematicalAge), baseXYZ, up)
+        structure = Turtle.graphTree(system.valueForStep(mathematicalAge), stemLine)
     }
 
     data class Measurements(val x : MinMax, val y : MinMax, val z : MinMax){

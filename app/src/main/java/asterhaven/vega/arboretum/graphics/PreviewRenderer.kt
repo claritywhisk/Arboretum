@@ -17,8 +17,10 @@ private const val largeDistance = 1000f
 class PreviewRenderer : GLSurfaceView.Renderer {
     lateinit var tree : Tree
 
+    private val up = Ray(Vector.build(0f,0f,0f), UnitVector(0f,0f,1f))
+
     fun newTreeForNewSystem(sys : TreeLSystem){
-        tree = Tree(Vector.build(0f,0f,0f), UnitVector(0f,0f,1f), sys)
+        tree = Tree(up, sys)
     }
 
     override fun onSurfaceCreated(p0: GL10?, p1: EGLConfig?) {
@@ -48,8 +50,8 @@ class PreviewRenderer : GLSurfaceView.Renderer {
         val midX = (m.x.max + m.x.min)/2f
         val midY = (m.y.max + m.y.min)/2f
         val midZ = (m.z.max + m.z.min)/2f
-        println(m)
-        println("$midX $midY $midZ")
+        //println(m)
+        //println("$midX $midY $midZ")
         //left third: looking back in the x direction
         GLES20.glViewport(0, 0, h, h)
         Matrix.setLookAtM(viewMatrix.floatArrayValue, 0,
