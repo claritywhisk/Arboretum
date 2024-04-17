@@ -14,7 +14,7 @@ class ArboretumGLSurfaceView(c : Context) : GLSurfaceView(c) {
         setRenderer(renderer)
     }
 
-    val grows = arrayListOf<Tree>()
+    private val grows = arrayListOf<Tree>()
     private val worldAnimation = ArbAnimation(this) {
         grows.removeLast().grow()
         requestRender()
@@ -29,8 +29,10 @@ class ArboretumGLSurfaceView(c : Context) : GLSurfaceView(c) {
         for (d in t) if (d is Tree) repeat(d.desiredAge - d.mathematicalAge) {
             grows.add(d)
         }
-        grows.shuffle()
-        worldAnimation.recurSteps()
+        if(grows.isNotEmpty()) {
+            grows.shuffle()
+            worldAnimation.recurSteps()
+        }
     }
 }
 /* todo likely memory management to be done at some point - seems to be plenty though

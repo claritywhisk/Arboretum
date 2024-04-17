@@ -17,15 +17,17 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import asterhaven.vega.arboretum.R
+import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.ui.components.ArboretumTabRow
+import asterhaven.vega.arboretum.ui.screen.CollectionScreen
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
 import asterhaven.vega.arboretum.ui.screen.WorldScreen
 
 enum class ArboretumScreen(@StringRes val title: Int, @DrawableRes val icon: Int) {
-    World(R.string.app_name, R.drawable.baseline_forest_24),
-    Parameters(R.string.parameters_title, R.drawable.baseline_edit_24)
-    //Rules(title = R.string.rules_title),
-    //Collection(title = R.string.collection_title)
+    World(R.string.app_name, R.drawable.baseline_circle_24),
+    Parameters(R.string.parameters_title, R.drawable.baseline_park_24),
+    //Rules(R.string.rules_title, R.drawable.baseline_edit_24),
+    Collection(R.string.collection_title, R.drawable.baseline_forest_24)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +69,15 @@ fun ArboretumApp(
                     navigateTo(ArboretumScreen.World)
                     viewModel.populateAction(steps)
                 })
+            }
+            /*composable(route = ArboretumScreen.Rules.name){
+                RulesScreen()
+            }*/
+            composable(route = ArboretumScreen.Collection.name){
+                CollectionScreen(viewModel.specification){
+                        selection : TreeLSystem.Specification ->
+                    viewModel.specification = selection
+                }
             }
         }
     }

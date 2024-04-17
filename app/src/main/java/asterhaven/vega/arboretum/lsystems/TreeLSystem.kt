@@ -15,6 +15,7 @@ private typealias LStr = Array<LSymbol>
 class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg val prod : Rule) {
     class Specification {
         data class Parameter(val symbol : String, val name : String, val type : ParameterType, val initialValue : Float)
+        var name = ""
         val parameters = arrayListOf<Parameter>()
         private data class Production(val before : String, val after : String)
         private val initial = ArrayList<LSymbol>()
@@ -52,6 +53,9 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
             require(missingStepSuggestion)
             parameters.add(Parameter("", "Steps", DerivationSteps(max), v.toFloat()))
             missingStepSuggestion = false
+        }
+        fun name(name : String){
+            this.name = name
         }
         private var missingStepSuggestion = true
         fun production(vararg s : String){

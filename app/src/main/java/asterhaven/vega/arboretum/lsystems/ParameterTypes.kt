@@ -13,6 +13,7 @@ open class IntParameterType(min : Int = 0, max : Int, private val gap : Int = 1)
 //non-exhaustive list of common ranges
 object AngleAcute : ParameterType(0f, 90f)
 object AngleNonReflex : ParameterType(0f, 180f)
+object AngleObtuse : ParameterType(90f, 180f)
 object Arbitrary : ParameterType(Float.NEGATIVE_INFINITY, Float.POSITIVE_INFINITY)
 class DerivationSteps(max : Int) : IntParameterType(max = max)
 class TrueConstant(c : Float) : ParameterType(c, c)

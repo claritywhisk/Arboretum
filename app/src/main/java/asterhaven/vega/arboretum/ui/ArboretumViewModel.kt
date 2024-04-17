@@ -8,7 +8,7 @@ import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.lsystems.DerivationSteps
-import asterhaven.vega.arboretum.lsystems.Systems.page60
+import asterhaven.vega.arboretum.lsystems.Systems
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.utility.shapes.Icosahedron
@@ -23,7 +23,14 @@ class ArboretumViewModel : ViewModel() {
     private val _worldDrawings = mutableStateOf(mutableListOf<Drawing>(Globe()))
     val worldDrawings : State<List<Drawing>> get() = _worldDrawings
 
-    private val specification by lazy { page60 }
+    private val _specification by lazy { mutableStateOf(Systems.list[Systems.list.lastIndex]) }
+    var specification : TreeLSystem.Specification
+        get() = _specification.value
+        set(value){
+            _specification.value = value
+            _lSystem.value = value.compile()
+        }
+
     private val _lSystem by lazy { MutableStateFlow(specification.compile()) }
     val lSystem : StateFlow<TreeLSystem> by lazy { _lSystem }
 
