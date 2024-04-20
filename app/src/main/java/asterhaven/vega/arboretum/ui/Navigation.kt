@@ -39,7 +39,6 @@ fun ArboretumApp(
 ) {
     val startTab = ArboretumScreen.Parameters
     var currentScreen by remember { mutableStateOf(startTab) }
-    val lSystem = viewModel.lSystem.collectAsState().value
 
     fun navigateTo(newScreen : ArboretumScreen) {
         navController.navigate(newScreen.name)
@@ -65,7 +64,7 @@ fun ArboretumApp(
                 WorldScreen(viewModel.worldDrawings.value)
             }
             composable(route = ArboretumScreen.Parameters.name){
-                ParamsScreen(viewModel.params, lSystem, { steps ->
+                ParamsScreen(viewModel.params.value, viewModel.lSystem.value!!, { steps ->
                     navigateTo(ArboretumScreen.World)
                     viewModel.populateAction(steps)
                 })
@@ -74,10 +73,7 @@ fun ArboretumApp(
                 RulesScreen()
             }*/
             composable(route = ArboretumScreen.Collection.name){
-                CollectionScreen(viewModel.specification){
-                        selection : TreeLSystem.Specification ->
-                    viewModel.specification = selection
-                }
+                CollectionScreen(viewModel.specification.value!!, viewModel::updateSpecification)
             }
         }
     }

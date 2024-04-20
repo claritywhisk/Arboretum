@@ -25,7 +25,7 @@ import kotlin.math.roundToInt
 
 @Composable
 fun ParamsScreen(
-    params : ArrayList<ArboretumViewModel.ViewModelParamWrapper>,
+    params : List<ArboretumViewModel.ViewModelParamWrapper>,
     system : TreeLSystem,
     populateAction : (Int) -> Unit,
     collapsed : Boolean = true

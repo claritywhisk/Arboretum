@@ -69,7 +69,7 @@ class TreeLSystem private constructor(ω : ArrayList<LSymbol>, private vararg va
             })
         }
         fun updateConstant(symbol : String, value : Float) : Boolean {
-            if(constants.containsKey(symbol) && constants[symbol] == value) return false
+            if(constants[symbol] == value) return false
             constants[symbol] = value
             return true
         }
