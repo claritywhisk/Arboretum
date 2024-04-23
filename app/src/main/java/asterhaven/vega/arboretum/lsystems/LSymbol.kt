@@ -17,12 +17,7 @@ sealed class LSymbol {
             else -> throw Exception("Error reading L-system from plaintext")
         }
     }
-    data object Apex : LSymbol() {
-        init {
-            val test = this::class
-            println(test)
-        }
-    }
+    data object Apex : LSymbol()
     data object BracketL : LSymbol()
     data object BracketR : LSymbol()
     sealed class ParametricWord(open val a : Float) : LSymbol(){

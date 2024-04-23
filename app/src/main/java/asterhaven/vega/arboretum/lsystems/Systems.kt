@@ -1,7 +1,7 @@
 package asterhaven.vega.arboretum.lsystems
 
 object Systems {
-    val list : List<TreeLSystem.Specification> by lazy { listOf(page25, page60) }
+    val list : List<Specification> by lazy { listOf(page25, page60) }
     private val page25 by lazy { specify {
         name("Page 25")
         constant("δ", 30f)
@@ -27,5 +27,4 @@ object Systems {
     }}
 }
 
-fun specify(lambda : TreeLSystem.Specification.()-> Unit) =
-    TreeLSystem.Specification().apply(lambda)
+fun specify(lambda : Specification.()-> Unit) = Specification().apply(lambda)

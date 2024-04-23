@@ -12,13 +12,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.Systems
-import asterhaven.vega.arboretum.lsystems.TreeLSystem
 
 @Composable
 fun CollectionScreen(
-    selected : TreeLSystem.Specification,
-    onSelectSpecification: (TreeLSystem.Specification) -> Unit) {
+    selected : Specification,
+    onSelectSpecification: (Specification) -> Unit) {
     var expanded by remember { mutableStateOf(true) }
     Box(contentAlignment = Alignment.Center) {
         Text(

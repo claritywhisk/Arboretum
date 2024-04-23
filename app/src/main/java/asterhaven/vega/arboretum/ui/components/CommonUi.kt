@@ -20,7 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.lsystems.IntParameterType
-import asterhaven.vega.arboretum.lsystems.TreeLSystem
+import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.UnitInterval
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import kotlin.math.roundToInt
@@ -58,12 +58,14 @@ fun ParameterSetter (
 @Preview
 @Composable
 fun ParamPreview() = ParameterSetter(
-    ArboretumViewModel().ViewModelParamWrapper(TreeLSystem.Specification.Parameter(
-        symbol = "a",
-        name = "name",
-        initialValue = .333f,
-        type = UnitInterval
-    ))
+    ArboretumViewModel().ViewModelParamWrapper(
+        Specification.Parameter(
+            symbol = "a",
+            name = "name",
+            initialValue = .333f,
+            type = UnitInterval
+        )
+    )
 )
 
 @Composable

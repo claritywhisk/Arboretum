@@ -9,6 +9,7 @@ import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.lsystems.DerivationSteps
+import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.Systems
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.lsystems.TrueConstant
@@ -24,9 +25,9 @@ class ArboretumViewModel : ViewModel() {
     private val _worldDrawings = mutableStateOf(mutableListOf<Drawing>(Globe()))
     val worldDrawings: State<List<Drawing>> get() = _worldDrawings
 
-    private val _specification : MutableState<TreeLSystem.Specification?> = mutableStateOf(null)
-    val specification : State<TreeLSystem.Specification?> = _specification
-    fun updateSpecification(newSpecification : TreeLSystem.Specification){
+    private val _specification : MutableState<Specification?> = mutableStateOf(null)
+    val specification : State<Specification?> = _specification
+    fun updateSpecification(newSpecification : Specification){
         _lSystem.value = newSpecification.compile()
         _params.value.forEach { it.job.cancel() }
         _params.value = arrayListOf<ArboretumViewModel.ViewModelParamWrapper>()
@@ -56,7 +57,7 @@ class ArboretumViewModel : ViewModel() {
         _worldDrawings.value = newList
     }
 
-    inner class ViewModelParamWrapper(val p : TreeLSystem.Specification.Parameter){
+    inner class ViewModelParamWrapper(val p : Specification.Parameter){
         private val _valueMSF = MutableStateFlow(p.initialValue)
         val valueSF : StateFlow<Float> = _valueMSF
         fun onValueChange(f : Float){
