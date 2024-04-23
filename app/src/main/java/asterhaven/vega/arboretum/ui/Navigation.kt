@@ -21,12 +21,13 @@ import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.ui.components.ArboretumTabRow
 import asterhaven.vega.arboretum.ui.screen.CollectionScreen
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
+import asterhaven.vega.arboretum.ui.screen.RulesScreen
 import asterhaven.vega.arboretum.ui.screen.WorldScreen
 
 enum class ArboretumScreen(@StringRes val title: Int, @DrawableRes val icon: Int) {
     World(R.string.app_name, R.drawable.baseline_circle_24),
     Parameters(R.string.parameters_title, R.drawable.baseline_park_24),
-    //Rules(R.string.rules_title, R.drawable.baseline_edit_24),
+    Rules(R.string.rules_title, R.drawable.baseline_edit_24),
     Collection(R.string.collection_title, R.drawable.baseline_forest_24)
 }
 
@@ -69,9 +70,9 @@ fun ArboretumApp(
                     viewModel.populateAction(steps)
                 })
             }
-            /*composable(route = ArboretumScreen.Rules.name){
+            composable(route = ArboretumScreen.Rules.name){
                 RulesScreen()
-            }*/
+            }
             composable(route = ArboretumScreen.Collection.name){
                 CollectionScreen(viewModel.specification.value!!, viewModel::updateSpecification)
             }

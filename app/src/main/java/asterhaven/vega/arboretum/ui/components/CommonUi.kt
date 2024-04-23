@@ -3,6 +3,8 @@ package asterhaven.vega.arboretum.ui.components
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Slider
@@ -16,6 +18,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.lsystems.UnitInterval
@@ -62,3 +65,15 @@ fun ParamPreview() = ParameterSetter(
         type = UnitInterval
     ))
 )
+
+@Composable
+fun LabeledTextField(label: String, text: String, onTextChanged: (String) -> Unit) {
+    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+        Text(label)
+        TextField(
+            value = text,
+            onValueChange = onTextChanged,
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
+}

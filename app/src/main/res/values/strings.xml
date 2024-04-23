@@ -5,4 +5,5 @@
     <string name="rules_title">Rules</string>
     <string name="collection_title">Collection</string>
     <string name="btn_populate">Populate</string>
+    <string name="label_axiom">Initial</string>
 </resources>
