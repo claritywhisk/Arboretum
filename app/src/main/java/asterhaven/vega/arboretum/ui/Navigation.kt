@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -17,7 +16,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.NavHostController
 import asterhaven.vega.arboretum.R
-import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.ui.components.ArboretumTabRow
 import asterhaven.vega.arboretum.ui.screen.CollectionScreen
 import asterhaven.vega.arboretum.ui.screen.ParamsScreen
@@ -71,7 +69,7 @@ fun ArboretumApp(
                 })
             }
             composable(route = ArboretumScreen.Rules.name){
-                RulesScreen()
+                RulesScreen(viewModel.specification.value!!)
             }
             composable(route = ArboretumScreen.Collection.name){
                 CollectionScreen(viewModel.specification.value!!, viewModel::updateSpecification)

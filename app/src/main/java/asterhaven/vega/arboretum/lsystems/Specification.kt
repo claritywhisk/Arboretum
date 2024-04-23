@@ -4,15 +4,16 @@ import asterhaven.vega.arboretum.utility.DEFAULT_STEPS
 import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
 import java.util.regex.Pattern
 
-//a text representation of an L-system
+//a representation of an L-system, with metadata, input from text
 class Specification {
     data class Parameter(val symbol : String, val name : String, val type : ParameterType, val initialValue : Float)
+    data class Production(val before : String, val after : String)
     var name = ""
     val parameters = arrayListOf<Parameter>()
-    private data class Production(val before : String, val after : String)
     private val initial = LList()
     private val constants = HashMap<String, Float>()
-    private val productionsRaw = ArrayList<Production>()
+    val productionsRaw = ArrayList<Production>()
+    var initialRaw = ""
     private companion object {
         private const val rxWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
         private const val rxValidSentence = "($rxWord)+"
@@ -22,6 +23,7 @@ class Specification {
     fun initial(s : String) = ω(s)
     fun ω(s : String){
         if(initial.isNotEmpty()) throw IllegalStateException("multiple initial")
+        initialRaw = s
         val m = patValid.matcher(s)
         if(!m.matches()) throw IllegalArgumentException("ωhitespace??")
         m.usePattern(patWord)

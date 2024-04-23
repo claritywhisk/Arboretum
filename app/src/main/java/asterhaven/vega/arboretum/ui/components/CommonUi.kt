@@ -2,8 +2,8 @@ package asterhaven.vega.arboretum.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -69,13 +69,9 @@ fun ParamPreview() = ParameterSetter(
 )
 
 @Composable
-fun LabeledTextField(label: String, text: String, onTextChanged: (String) -> Unit) {
+fun LabeledSection(label: String, content: @Composable() (ColumnScope.() -> Unit)) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
         Text(label)
-        TextField(
-            value = text,
-            onValueChange = onTextChanged,
-            modifier = Modifier.fillMaxWidth()
-        )
+        content()
     }
 }

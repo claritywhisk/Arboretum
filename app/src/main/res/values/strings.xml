@@ -5,5 +5,9 @@
     <string name="rules_title">Rules</string>
     <string name="collection_title">Collection</string>
     <string name="btn_populate">Populate</string>
-    <string name="label_axiom">Initial</string>
+    <string name="rules_label_axiom">Initial</string>
+    <string name="rules_label_productions">Productions</string>
+    <string name="rules_btn_add">Add Rule</string>
+    <string name="rules_btn_alter">Reorder/Delete</string>
+    <string name="rules_btn_compile">Compile</string>
 </resources>
