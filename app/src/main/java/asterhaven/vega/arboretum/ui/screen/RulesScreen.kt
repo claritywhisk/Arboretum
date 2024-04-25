@@ -15,6 +15,8 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -24,44 +26,102 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.R
+import asterhaven.vega.arboretum.lsystems.LWord
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.ui.components.LabeledSection
+
+private const val NOT_EDITING = -1
+private const val EDITING_AXIOM = Int.MAX_VALUE
 
 @Composable
 fun RulesScreen(
     baseSpecification : Specification //the selected spec which this screen shows/modifies
-){
-    var areButtonsVisible by remember { mutableStateOf(false) }
-    var axiom by remember { mutableStateOf(baseSpecification.initialRaw) }
-    var productionRules = remember { mutableStateListOf(*baseSpecification.productionsRaw.toTypedArray()) }
+) {
+    val axiom by remember { mutableStateOf(baseSpecification.initialRaw) }
+    val productionRules =
+        remember { mutableStateListOf(*baseSpecification.productionsRaw.toTypedArray()) }
+    val editingRow = remember { mutableStateOf(NOT_EDITING) }
+    val cursorPos = remember { mutableStateOf(NOT_EDITING) }
+    var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+    @Composable
+    fun AccursedText(text: String, modifier: Modifier = Modifier) {
+        Text(buildAnnotatedString {
+            append(text)
+            if (cursorPos.value != NOT_EDITING)
+                addStyle(SpanStyle(background = Color.Cyan), cursorPos.value, cursorPos.value + 1)
+        }, modifier)
+    }
+    @Composable
+    fun EditRow() {
+        Row(Modifier.fillMaxWidth()) {
+            DropdownMenu(expanded = true, onDismissRequest = { editingRow.value = NOT_EDITING }) {
+                LWord.standardSymbols.forEach {
+                    DropdownMenuItem(text = {
+                        Text(it.symbol.toString())
+                        Text(it.desc)
+                    }, onClick = { })
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun ReorderDeleteButtons(i : Int){
+        IconButton(onClick = {
+            productionRules.removeAt(i)
+        }) {
+            Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
+        }
+        IconButton(enabled = i > 0, onClick = {
+            productionRules.add(i - 1, productionRules.removeAt(i))
+        }) {
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
+        }
+        IconButton(enabled = i != productionRules.lastIndex, onClick = {
+            productionRules.add(i + 1, productionRules.removeAt(i))
+        }) {
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
+        }
+    }
+    //BEGIN Content of RulesScreen Composable
     Column(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
     ) {
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom)){
-            Text(axiom)
+        LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom)) {
+            Row(Modifier.fillMaxWidth()) {
+                AccursedText(axiom)
+            }
+            if (editingRow.value == EDITING_AXIOM) EditRow()
         }
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)){
+        LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)) {
             productionRules.forEachIndexed { iRule, pr ->
                 Row(Modifier.fillMaxWidth()) {
-                    Text(pr.before)
+                    AccursedText(pr.before)
                     Icon(Icons.Default.ArrowForward, contentDescription = "Arrow")
-                    Text(pr.after, Modifier.weight(1f).width(IntrinsicSize.Max))
-                    if (areButtonsVisible){
+                    AccursedText(
+                        pr.after, Modifier
+                            .weight(1f)
+                            .width(IntrinsicSize.Max)
+                    )
+                    if (reorderDeleteButtonsVisible) {
                         Spacer(Modifier.weight(.01f))
                         Row(Modifier.align(Alignment.CenterVertically)) {
-                            ReorderDeleteButtons(productionRules, iRule)
+                            ReorderDeleteButtons(iRule)
                         }
                     }
                 }
+                if(editingRow.value == iRule) EditRow()
             }
         }
         Column(
@@ -76,7 +136,7 @@ fun RulesScreen(
                     Text(LocalContext.current.getString(R.string.rules_btn_add))
                 }
                 Button(
-                    onClick = { areButtonsVisible = !areButtonsVisible }
+                    onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
                 ) {
                     Text(LocalContext.current.getString(R.string.rules_btn_alter))
                 }
@@ -90,18 +150,5 @@ fun RulesScreen(
                 }
             }
         }
-    }
-}
-
-@Composable
-fun ReorderDeleteButtons(rules : SnapshotStateList<Specification.Production>, i : Int){
-    IconButton(onClick = { rules.removeAt(i) }) {
-        Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
-    }
-    IconButton(enabled = i > 0, onClick = { rules.add(i - 1, rules.removeAt(i)) }) {
-        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
-    }
-    IconButton(enabled = i != rules.lastIndex, onClick = { rules.add(i + 1, rules.removeAt(i)) }) {
-        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
     }
 }
