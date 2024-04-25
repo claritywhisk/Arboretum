@@ -32,7 +32,7 @@ class Specification {
                 null -> Float.NaN
                 else -> constants[p] ?: p.toFloat()
             }
-            initial += LSymbol.parse(m.group(1)!!, a)
+            initial += LWord.parse(m.group(1)!!, a)
         }
     }
     fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
@@ -89,7 +89,7 @@ class Specification {
                     m.find()
                     val p = m.group(3)
                     if(p != null) onParam(p)
-                    LSymbol.parse(m.group(1)!!, Float.NaN)
+                    LWord.parse(m.group(1)!!, Float.NaN)
                 }
             }
             val beforeTemplate = template(productionsRaw[rI].before) {

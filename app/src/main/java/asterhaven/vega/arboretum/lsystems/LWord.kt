@@ -2,9 +2,25 @@ package asterhaven.vega.arboretum.lsystems
 
 import asterhaven.vega.arboretum.graphics.Turtle
 
-sealed class LSymbol {
+abstract class LWord {
     companion object {
-        fun parse(type: String, a: Float): LSymbol = when (type.toCharArray()[0]) {
+        data class LSymbol(
+            val symbol : Char,
+            val params : Int,
+            val desc : String
+        )
+        val standardSymbols = listOf(//todo extract strings, maybe associate full explanations
+            LSymbol('F', 1, "Forward"),
+            LSymbol('f', 1, "Forward, no draw"),
+            LSymbol('!', 1, "Set line width"),
+            LSymbol('+', 1, "Turn left"),
+            LSymbol('&', 1, "Pitch down"),
+            LSymbol('/', 1, "Roll over"),
+            LSymbol('[', 0, "Save turtle state"),
+            LSymbol(']', 0, "Load saved state (LIFO)")
+        )
+        //todo parse multiple parameters and about 8 custom symbols
+        fun parse(type: String, a: Float): LWord = when (type.toCharArray()[0]) {
             '!' -> SetWidth(a)
             'F' -> Forward(a)
             'f' -> ForwardNoDraw(a)
@@ -17,10 +33,10 @@ sealed class LSymbol {
             else -> throw Exception("Error reading L-system from plaintext")
         }
     }
-    data object Apex : LSymbol()
-    data object BracketL : LSymbol()
-    data object BracketR : LSymbol()
-    sealed class ParametricWord(open val a : Float) : LSymbol(){
+    data object Apex : LWord()
+    data object BracketL : LWord()
+    data object BracketR : LWord()
+    sealed class ParametricWord(open val a : Float) : LWord(){
         fun withValue(a : Float) : ParametricWord =
             this::class.java.getConstructor(Float::class.java).newInstance(a)
     }

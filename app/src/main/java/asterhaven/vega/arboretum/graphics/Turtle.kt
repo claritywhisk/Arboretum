@@ -1,8 +1,8 @@
 package asterhaven.vega.arboretum.graphics
 
 import android.opengl.Matrix
-import asterhaven.vega.arboretum.lsystems.LSymbol
-import asterhaven.vega.arboretum.lsystems.LSymbol.*
+import asterhaven.vega.arboretum.lsystems.LWord
+import asterhaven.vega.arboretum.lsystems.LWord.*
 import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.utility.Matrix4X4
 import asterhaven.vega.arboretum.utility.Ray
@@ -45,7 +45,7 @@ object Turtle {
         }
     }
 
-    fun graphTree(string : Iterable<LSymbol>, posDir : Ray) : Tree.Structure {
+    fun graphTree(string : Iterable<LWord>, posDir : Ray) : Tree.Structure {
         val stack : ArrayDeque<State> = ArrayDeque(listOf(State(posDir.xyz, Orientation(posDir.dir))))
         val branches : ArrayList<CommonShape> = arrayListOf()
         var width = -1f

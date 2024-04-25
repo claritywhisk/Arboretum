@@ -6,8 +6,8 @@ package asterhaven.vega.arboretum.lsystems
     The Algorithmic Beauty of Plants
  */
 
-typealias LStr = Array<LSymbol>
-typealias LList = ArrayList<LSymbol>
+typealias LStr = Array<LWord>
+typealias LList = ArrayList<LWord>
 
 class TreeLSystem(ω : LList, private vararg val prod : Rule) {
     class Rule(
@@ -15,14 +15,14 @@ class TreeLSystem(ω : LList, private vararg val prod : Rule) {
         private val afterTemplate: LStr,
         private vararg val fPWord : (FloatArray) -> Float //given the LHS params, produce each param value
     ){
-        private val inParams = FloatArray(beforeTemplate.count{ it is LSymbol.ParametricWord })
+        private val inParams = FloatArray(beforeTemplate.count{ it is LWord.ParametricWord })
         private var matchIndex = 0
         fun beginMatch() {
             matchIndex = 0
         }
-        fun match(s : LSymbol) : LStr? {
+        fun match(s : LWord) : LStr? {
             if(s::class == beforeTemplate[matchIndex]::class){
-                if(s is LSymbol.ParametricWord){
+                if(s is LWord.ParametricWord){
                     inParams[matchIndex] = s.a
                 }
                 if(++matchIndex == beforeTemplate.size) {
@@ -30,7 +30,7 @@ class TreeLSystem(ω : LList, private vararg val prod : Rule) {
                     var iF = 0
                     return LStr(afterTemplate.size) {
                         val sym = afterTemplate[it]
-                        if(sym is LSymbol.ParametricWord) sym.withValue(fPWord[iF++](inParams))
+                        if(sym is LWord.ParametricWord) sym.withValue(fPWord[iF++](inParams))
                         else sym
                     }
                 }
