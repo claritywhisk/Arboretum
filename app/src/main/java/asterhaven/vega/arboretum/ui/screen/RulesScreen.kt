@@ -2,10 +2,13 @@ package asterhaven.vega.arboretum.ui.screen
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Delete
@@ -48,12 +51,15 @@ fun RulesScreen(
         }
         LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)){
             productionRules.forEachIndexed { iRule, pr ->
-                Column {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Text(pr.before)
-                        Icon(Icons.Default.ArrowForward, contentDescription = "Arrow")
-                        Text(pr.after)
-                        if (areButtonsVisible) ReorderDeleteButtons(productionRules, iRule)
+                Row(Modifier.fillMaxWidth()) {
+                    Text(pr.before)
+                    Icon(Icons.Default.ArrowForward, contentDescription = "Arrow")
+                    Text(pr.after, Modifier.weight(1f).width(IntrinsicSize.Max))
+                    if (areButtonsVisible){
+                        Spacer(Modifier.weight(.01f))
+                        Row(Modifier.align(Alignment.CenterVertically)) {
+                            ReorderDeleteButtons(productionRules, iRule)
+                        }
                     }
                 }
             }
@@ -92,10 +98,10 @@ fun ReorderDeleteButtons(rules : SnapshotStateList<Specification.Production>, i 
     IconButton(onClick = { rules.removeAt(i) }) {
         Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
     }
-    if(i > 0) IconButton(onClick = { rules.add(i - 1, rules.removeAt(i)) }) {
+    IconButton(enabled = i > 0, onClick = { rules.add(i - 1, rules.removeAt(i)) }) {
         Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
     }
-    if(i != rules.lastIndex) IconButton(onClick = { rules.add(i + 1, rules.removeAt(i)) }) {
+    IconButton(enabled = i != rules.lastIndex, onClick = { rules.add(i + 1, rules.removeAt(i)) }) {
         Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
     }
 }
