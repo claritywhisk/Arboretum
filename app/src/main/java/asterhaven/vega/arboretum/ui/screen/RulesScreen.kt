@@ -23,8 +23,10 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -33,8 +35,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -58,41 +63,57 @@ fun RulesScreen(
     val editingRow = remember { mutableStateOf(NOT_EDITING) }
     val editingString = remember { mutableStateOf<StringBuilder?>(null) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+
+    fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
+        awaitPointerEventScope {
+            val event = awaitPointerEvent(PointerEventPass.Main)
+            if(predicate()) event.changes.forEach { it.consume() }
+        }
+    }
+    fun Modifier.consumeClickEvents() = this.consumeClickEventsWhen { true }
     @Composable
     fun AccursedText(text: String, thisRow : Int, modifier: Modifier = Modifier) {
         val editingThis = remember { mutableStateOf(false) }
+        LaunchedEffect(editingRow) {
+            if(editingRow.value == NOT_EDITING) editingThis.value = false
+        }
         ClickableText(
-            modifier = modifier.padding(8.dp),
+            modifier = modifier
+                .padding(8.dp)
+                .consumeClickEventsWhen { editingThis.value },
+            style = TextStyle(color = MaterialTheme.colorScheme.onBackground),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight TODO
                 append(text)
-                if (editingCursorPos.value != NOT_EDITING)
-                    addStyle(SpanStyle(background = Color.Cyan), editingCursorPos.value, editingCursorPos.value + 1)
+                if(editingThis.value) addStyle(
+                    SpanStyle(background = Color.Cyan),
+                    editingCursorPos.value,
+                    editingCursorPos.value + 1
+                )
             }
         ) { clickedCharOffset ->
-            if(!editingThis.value) {
-                editingRow.value = thisRow
-                editingString.value = StringBuilder(text)
-                editingThis.value = true
-            } // proceed to offset even when first starting editing
+            //todo draft
             editingCursorPos.value = 1 + clickedCharOffset
+            editingRow.value = thisRow
+            editingString.value = StringBuilder(text)
+            editingThis.value = true
         }
     }
     @Composable
     fun EditRow() {
-        Row(Modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().consumeClickEvents()) {
             IconButton(enabled = editingCursorPos.value > 0, onClick = {
-                editingCursorPos.value--
+                editingCursorPos.value -= 1
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
             IconButton(enabled = editingCursorPos.value < editingString.toString().length, onClick = {
-                editingCursorPos.value++
+                editingCursorPos.value += 1
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
             IconButton(enabled = editingCursorPos.value > 0, onClick = {
-
+                //TODO
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
@@ -101,21 +122,18 @@ fun RulesScreen(
             DropdownMenu(expanded = true, onDismissRequest = { editingRow.value = NOT_EDITING }) {
                 LWord.standardSymbols.forEach {
                     DropdownMenuItem(text = {
-                        Text(it.symbol.toString())
-                        Text(it.desc)
+                        Row {
+                            Text(it.symbol.toString())
+                            Spacer(Modifier.padding(16.dp).weight(1f))
+                            Text(it.desc)
+                        }
                     }, onClick = { })
                 }
             }
         }
     }
-
     @Composable
     fun ReorderDeleteButtons(i : Int){
-        IconButton(onClick = {
-            productionRules.removeAt(i)
-        }) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
-        }
         IconButton(enabled = i > 0, onClick = {
             productionRules.add(i - 1, productionRules.removeAt(i))
         }) {
@@ -126,12 +144,29 @@ fun RulesScreen(
         }) {
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
         }
+        IconButton(onClick = {
+            productionRules.removeAt(i)
+        }) {
+            Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
+        }
     }
     //BEGIN Content of RulesScreen Composable
     Column(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    // Check for clicks outside (by design = unconsumed) to dismiss controls
+                    val event = awaitPointerEvent(PointerEventPass.Final)
+                    if (event.changes.none { it.isConsumed }) {
+                        editingCursorPos.value = NOT_EDITING
+                        editingRow.value = NOT_EDITING
+                        editingString.value = null
+                    }
+                    //Leave editingCursorPosLatest alone in case we're clicking on the EditRow buttons
+                }
+            }
     ) {
         LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom)) {
             Row(Modifier.fillMaxWidth()) {
@@ -156,7 +191,7 @@ fun RulesScreen(
                         }
                     }
                 }
-                if(editingRow.value == iRule) EditRow()
+                if (editingRow.value == iRule) EditRow()
             }
         }
         Column(
@@ -164,6 +199,16 @@ fun RulesScreen(
                 .fillMaxWidth()
                 .padding(top = 16.dp),
         ) {
+            Row(horizontalArrangement = Arrangement.Center) {
+                Button(
+                    onClick = {  /*TODO: Handle */ }
+                ) {
+                    Text(
+                        LocalContext.current.getString(R.string.rules_btn_compile),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
             Row(horizontalArrangement = Arrangement.Center) {
                 Button(
                     onClick = { productionRules.add(Specification.Production("", "")) }
@@ -174,14 +219,6 @@ fun RulesScreen(
                     onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
                 ) {
                     Text(LocalContext.current.getString(R.string.rules_btn_alter))
-                }
-                Button(
-                    onClick = {  /*TODO: Handle */ }
-                ) {
-                    Text(
-                        LocalContext.current.getString(R.string.rules_btn_compile),
-                        fontWeight = FontWeight.Bold
-                    )
                 }
             }
         }
