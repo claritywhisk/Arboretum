@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -66,8 +65,10 @@ fun RulesScreen(
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
         awaitPointerEventScope {
-            val event = awaitPointerEvent(PointerEventPass.Main)
-            if(predicate()) event.changes.forEach { it.consume() }
+            while(true) {
+                val event = awaitPointerEvent(PointerEventPass.Main)
+                if (predicate()) event.changes.forEach { it.consume() }
+            }
         }
     }
     fun Modifier.consumeClickEvents() = this.consumeClickEventsWhen { true }
@@ -78,9 +79,7 @@ fun RulesScreen(
             if(editingRow.value == NOT_EDITING) editingThis.value = false
         }
         ClickableText(
-            modifier = modifier
-                .padding(8.dp)
-                .consumeClickEventsWhen { editingThis.value },
+            modifier = modifier.padding(8.dp),
             style = TextStyle(color = MaterialTheme.colorScheme.onBackground),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight TODO
@@ -101,7 +100,10 @@ fun RulesScreen(
     }
     @Composable
     fun EditRow() {
-        Row(Modifier.fillMaxWidth().consumeClickEvents()) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .consumeClickEvents()) {
             IconButton(enabled = editingCursorPos.value > 0, onClick = {
                 editingCursorPos.value -= 1
             }) {
@@ -118,16 +120,20 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
         }
-        Row(Modifier.fillMaxWidth()) {
-            DropdownMenu(expanded = true, onDismissRequest = { editingRow.value = NOT_EDITING }) {
+        Row {
+            Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 LWord.standardSymbols.forEach {
-                    DropdownMenuItem(text = {
-                        Row {
-                            Text(it.symbol.toString())
-                            Spacer(Modifier.padding(16.dp).weight(1f))
-                            Text(it.desc)
+                    DropdownMenuItem(
+                        text = {
+                            Row {
+                                Text(it.symbol.toString() + "\t\t\t")
+                                Text(it.desc)
+                            }
+                        },
+                        onClick = {
+                            //TODO
                         }
-                    }, onClick = { })
+                    )
                 }
             }
         }
@@ -158,25 +164,33 @@ fun RulesScreen(
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     // Check for clicks outside (by design = unconsumed) to dismiss controls
-                    val event = awaitPointerEvent(PointerEventPass.Final)
-                    if (event.changes.none { it.isConsumed }) {
-                        editingCursorPos.value = NOT_EDITING
-                        editingRow.value = NOT_EDITING
-                        editingString.value = null
+                    while(true){
+                        val event = awaitPointerEvent()
+                        if (event.changes.none { it.isConsumed }) {
+                            editingCursorPos.value = NOT_EDITING
+                            editingRow.value = NOT_EDITING
+                            editingString.value = null
+                        }
                     }
-                    //Leave editingCursorPosLatest alone in case we're clicking on the EditRow buttons
                 }
             }
     ) {
         LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom)) {
-            Row(Modifier.fillMaxWidth()) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .consumeClickEventsWhen { editingRow.value == EDITING_AXIOM }) {
                 AccursedText(axiom, EDITING_AXIOM)
             }
             if (editingRow.value == EDITING_AXIOM) EditRow()
         }
         LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)) {
             productionRules.forEachIndexed { iRule, pr ->
-                Row(Modifier.fillMaxWidth()) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .consumeClickEventsWhen { editingRow.value == iRule }
+                ) {
                     AccursedText(pr.before, iRule)
                     Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
                     AccursedText(

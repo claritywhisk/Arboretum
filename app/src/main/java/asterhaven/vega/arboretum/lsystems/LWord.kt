@@ -17,7 +17,7 @@ abstract class LWord {
             LSymbol('&', 1, "Pitch down"),
             LSymbol('/', 1, "Roll over"),
             LSymbol('[', 0, "Save turtle state"),
-            LSymbol(']', 0, "Load saved state (LIFO)")
+            LSymbol(']', 0, "Load state (LIFO)")
         )
         //todo parse multiple parameters and about 8 custom symbols
         fun parse(type: String, a: Float): LWord = when (type.toCharArray()[0]) {
