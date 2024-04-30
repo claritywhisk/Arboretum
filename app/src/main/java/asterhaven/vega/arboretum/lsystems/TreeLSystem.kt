@@ -9,12 +9,13 @@ package asterhaven.vega.arboretum.lsystems
 typealias LStr = Array<LWord>
 typealias LList = ArrayList<LWord>
 
-class TreeLSystem(ω : LList, private vararg val prod : Rule) {
+class TreeLSystem(initial : LList, private val prod : Array<Rule>) {
     class Rule(
         val beforeTemplate : LStr,
         private val afterTemplate: LStr,
         private vararg val fPWord : (FloatArray) -> Float //given the LHS params, produce each param value
     ){
+        //todo review this file. line below appears wrong for comma separated params
         private val inParams = FloatArray(beforeTemplate.count{ it is LWord.ParametricWord })
         private var matchIndex = 0
         fun beginMatch() {
@@ -47,7 +48,7 @@ class TreeLSystem(ω : LList, private vararg val prod : Rule) {
         return computeValueForStep(n, x)
     }
     private val valueForStep = object : ArrayList<LList?>(){
-        init { add(ω) }
+        init { add(initial) }
         var highestStoredStep = 0
         override fun set(index: Int, element: LList?): LList? {
             if(index == 0) throw UnsupportedOperationException()

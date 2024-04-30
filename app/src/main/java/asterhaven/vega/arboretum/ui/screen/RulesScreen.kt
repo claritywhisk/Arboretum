@@ -39,10 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.lsystems.LWord
+import asterhaven.vega.arboretum.lsystems.Specification.Production
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 
@@ -54,9 +54,9 @@ private const val EMPTY_STRING = ""
 fun RulesScreen(
     baseSpecification : Specification //the selected spec which this screen shows/modifies
 ) {
-    val axiom by remember { mutableStateOf(baseSpecification.initialRaw) }
+    val axiom by remember { mutableStateOf(baseSpecification.initial) }
     val productionRules =
-        remember { mutableStateListOf(*baseSpecification.productionsRaw.toTypedArray()) }
+        remember { mutableStateListOf(*baseSpecification.productions.toTypedArray()) }
     val editingCursorPos = remember { mutableStateOf(NOT_EDITING) }
     val editingRow = remember { mutableStateOf(NOT_EDITING) }
     val editingString = remember { mutableStateOf(EMPTY_STRING) }
@@ -247,17 +247,7 @@ fun RulesScreen(
         ) {
             Row(horizontalArrangement = Arrangement.Center) {
                 Button(
-                    onClick = {  /*TODO: Handle */ }
-                ) {
-                    Text(
-                        LocalContext.current.getString(R.string.rules_btn_compile),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            Row(horizontalArrangement = Arrangement.Center) {
-                Button(
-                    onClick = { productionRules.add(Specification.Production("", "")) }
+                    onClick = { productionRules.add(Production(" ", " ")) }
                 ) {
                     Text(LocalContext.current.getString(R.string.rules_btn_add))
                 }

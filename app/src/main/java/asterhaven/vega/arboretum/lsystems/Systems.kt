@@ -1,5 +1,9 @@
 package asterhaven.vega.arboretum.lsystems
 
+import asterhaven.vega.arboretum.utility.DEFAULT_STEPS
+import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
+import dev.nesk.akkurate.ValidationResult
+
 object Systems {
     val list : List<Specification> by lazy { listOf(page25, page60) }
     private val page25 by lazy { specify {
@@ -27,4 +31,53 @@ object Systems {
     }}
 }
 
-fun specify(lambda : Specification.()-> Unit) = Specification().apply(lambda)
+//convenience for writing in Systems.kt
+class SpecificationBuilder {
+    private val cons = HashMap<String, Float>()
+    private var i = ""
+    private var n = ""
+    private val pa = arrayListOf<Specification.Parameter>()
+    private val pr = arrayListOf<Specification.Production>()
+    fun initial(s : String){
+        i = s
+    }
+    fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
+        pa.add(Specification.Parameter(symbol, name, type, value))
+        cons[symbol] = value
+    }
+    fun constant(symbol : String, value : Float, name : String = "") =
+        param(symbol, value, name, TrueConstant(value))
+    fun name(name : String){ n = name }
+    fun production(vararg s : String) = productions(*s)
+    fun productions(vararg s : String){
+        Array(s.size / 2){
+            Specification.Production(s[it * 2], s[it * 2 + 1])
+        }.forEach {
+            pr.add(it)
+        }
+    }
+    fun build() = Specification(cons, i, n, pa, pr)
+}
+
+fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification =
+    SpecificationBuilder().apply(lambda).build().apply {
+        when(params.firstOrNull { p -> p.type is DerivationSteps}) {
+            null -> params.add(
+                Specification.Parameter(
+                    "",
+                    "Steps",
+                    DerivationSteps(DEFAULT_STEPS_SLIDER_MAX),
+                    DEFAULT_STEPS.toFloat()
+                )
+            )
+            else -> {}
+        }
+        when(val result = SpecificationRegexAndValidation.validateSpecification(this)){
+            is ValidationResult.Failure -> {
+                val s = result.violations.joinToString { cvs -> "  - ${cvs.path}: ${cvs.message}" }
+                throw IllegalArgumentException("Systems.kt validation \n$s")
+            }
+            is ValidationResult.Success -> { }
+        }
+    }
+

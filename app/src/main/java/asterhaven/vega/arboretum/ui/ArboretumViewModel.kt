@@ -32,7 +32,7 @@ class ArboretumViewModel : ViewModel() {
         _params.value.forEach { it.job.cancel() }
         _params.value = arrayListOf<ArboretumViewModel.ViewModelParamWrapper>()
             .apply {
-                addAll(newSpecification.parameters.filter { p ->
+                addAll(newSpecification.params.filter { p ->
                     p.type !is TrueConstant
                 }.map { sp -> ViewModelParamWrapper(sp) })
             }
