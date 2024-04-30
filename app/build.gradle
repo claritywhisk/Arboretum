@@ -2,6 +2,7 @@ plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
     id 'com.google.gms.google-services'
+    id 'com.google.devtools.ksp' version '1.9.22-1.0.17'
 }
 
 android {
@@ -33,7 +34,6 @@ android {
     }
     buildFeatures {
         compose true
-        dataBinding true
     }
     composeOptions {
         kotlinCompilerExtensionVersion '1.5.10'
@@ -51,9 +51,9 @@ android {
 dependencies {
     def composeBom = platform('androidx.compose:compose-bom:2024.02.02')
     implementation composeBom
-    implementation 'androidx.core:core-ktx:1.12.0'
+    implementation 'androidx.core:core-ktx:1.13.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.7.0'
-    implementation 'androidx.activity:activity-compose:1.8.2'
+    implementation 'androidx.activity:activity-compose:1.9.0'
     implementation "androidx.compose.ui:ui"
     implementation "androidx.compose.ui:ui-tooling-preview"
     implementation "androidx.compose.material3:material3"
@@ -64,6 +64,9 @@ dependencies {
     implementation 'androidx.navigation:navigation-runtime-ktx:2.7.7'
     implementation platform('com.google.firebase:firebase-bom:32.7.4')
     implementation 'com.google.firebase:firebase-analytics'
+    implementation 'dev.nesk.akkurate:akkurate-core:0.7.0'
+    implementation 'dev.nesk.akkurate:akkurate-ksp-plugin:0.7.0'
+    ksp 'dev.nesk.akkurate:akkurate-ksp-plugin:0.7.0'
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
