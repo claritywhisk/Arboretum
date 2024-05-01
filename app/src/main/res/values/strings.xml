@@ -9,4 +9,6 @@
     <string name="rules_label_productions">Productions</string>
     <string name="rules_btn_add">Add Rule</string>
     <string name="rules_btn_alter">Reorder/Delete</string>
+    <string name="rules_btn_validate">Validate</string>
+    <string name="rules_msg_abandon_invalid">The changes to the rules could not be used as entered.</string>
 </resources>

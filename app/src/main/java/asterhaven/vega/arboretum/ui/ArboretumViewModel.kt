@@ -49,6 +49,10 @@ class ArboretumViewModel : ViewModel() {
         updateSpecification(Systems.list[Systems.list.lastIndex])
     }
 
+    private val _leavingScreen : MutableState<ArboretumScreen?> = mutableStateOf(null)
+    val leavingScreen : State<ArboretumScreen?> = _leavingScreen
+    fun setLeavingScreen(s : ArboretumScreen) { _leavingScreen.value = s }
+
     fun populateAction(steps : Int){
         val trees = Icosahedron.stems.map { Tree(it, lSystem.value!!, steps) }
         val newList = mutableListOf<Drawing>()

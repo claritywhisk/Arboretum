@@ -1,5 +1,6 @@
 package asterhaven.vega.arboretum.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -15,9 +16,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -44,23 +47,55 @@ import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.lsystems.LWord
 import asterhaven.vega.arboretum.lsystems.Specification.Production
 import asterhaven.vega.arboretum.lsystems.Specification
+import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
+import asterhaven.vega.arboretum.ui.ArboretumScreen
 import asterhaven.vega.arboretum.ui.components.LabeledSection
+import dev.nesk.akkurate.ValidationResult
 
 private const val NOT_EDITING = -1
 private const val EDITING_AXIOM = Int.MAX_VALUE
 private const val EMPTY_STRING = ""
 
+private fun copyOfParams(params : ArrayList<Specification.Parameter>) =
+    ArrayList<Specification.Parameter>().apply{ params.forEach { p -> add(p.copy()) }}
+
 @Composable
 fun RulesScreen(
-    baseSpecification : Specification //the selected spec which this screen shows/modifies
+    baseSpecification : Specification, //the selected spec which this screen shows/modifies
+    updateSpecification: (Specification) -> Unit,
+    leavingScreen : ArboretumScreen?
 ) {
     val axiom by remember { mutableStateOf(baseSpecification.initial) }
     val productionRules =
         remember { mutableStateListOf(*baseSpecification.productions.toTypedArray()) }
+    val newParams = remember { mutableStateOf(copyOfParams(baseSpecification.params)) }
+
     val editingCursorPos = remember { mutableStateOf(NOT_EDITING) }
     val editingRow = remember { mutableStateOf(NOT_EDITING) }
     val editingString = remember { mutableStateOf(EMPTY_STRING) }
+    val formUnvalidated = remember { mutableStateOf(false) }
+    val messagesInvalid = remember { mutableStateOf<ValidationResult.Failure?>(null) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+
+    fun tryNewSpecification() {
+        val newSpecification = Specification(
+            name ="todo",
+            initial = axiom,
+            productions = ArrayList(productionRules.toList()),
+            params = newParams.value,
+            constants = HashMap<String, Float>().apply {
+                newParams.value.forEach { p -> this[p.symbol] = p.initialValue }
+            }
+        )
+        when(val result = SpecificationRegexAndValidation.validateSpecification(newSpecification)){
+            is ValidationResult.Success -> {
+                messagesInvalid.value = null
+                updateSpecification(newSpecification)
+            }
+            is ValidationResult.Failure -> messagesInvalid.value = result
+        }
+        formUnvalidated.value = false
+    }
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -74,11 +109,12 @@ fun RulesScreen(
     fun rangeOfCursorIndexOrWord() : IntRange {
         val s = editingString.value
         val c = editingCursorPos.value
-        return when(s[c]) {
+        return when (s[c]) {
             '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
             else -> c..c
         }
     }
+
     @Composable
     fun AccursedText(text: String, thisRow : Int, modifier: Modifier = Modifier) {
         val editingThis = remember { mutableStateOf(false) }
@@ -115,7 +151,7 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun EditRow() {
+    fun EditTray() {
         Row(Modifier.consumeClickEvents()) {
             fun charAtCursor(offset : Int) = editingString.value[editingCursorPos.value + offset]
             IconButton(enabled = editingCursorPos.value > 0, onClick = {
@@ -139,12 +175,22 @@ fun RulesScreen(
             }
             IconButton(enabled = editingCursorPos.value > 0, onClick = {
                 editingString.value = editingString.value.removeRange(rangeOfCursorIndexOrWord())
+                formUnvalidated.value = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
+            }
+            IconButton(enabled = formUnvalidated.value, onClick = {
+                tryNewSpecification()
+            }) {
+                if(formUnvalidated.value)
+                    Text(LocalContext.current.getString(R.string.rules_btn_validate))
+                else if(messagesInvalid.value == null) Icon(Icons.Default.Warning, contentDescription = "Review errors")
+                else Icon(Icons.Default.Check, contentDescription = "Rules are valid")
             }
         }
         Row {
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
+                //todo choose params
                 LWord.standardSymbols.forEach {
                     DropdownMenuItem(
                         text = {
@@ -164,6 +210,7 @@ fun RulesScreen(
                             val s = " " + it.symbol + parameters + " "
                             editingString.value.replaceRange(rangeOfCursorIndexOrWord(), s)
                             editingCursorPos.value += if(it.params == 0) 2 else 3
+                            formUnvalidated.value = true
                         }
                     )
                 }
@@ -174,16 +221,19 @@ fun RulesScreen(
     fun ReorderDeleteButtons(i : Int){
         IconButton(enabled = i > 0, onClick = {
             productionRules.add(i - 1, productionRules.removeAt(i))
+            formUnvalidated.value = true
         }) {
             Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
         }
         IconButton(enabled = i != productionRules.lastIndex, onClick = {
             productionRules.add(i + 1, productionRules.removeAt(i))
+            formUnvalidated.value = true
         }) {
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
         }
         IconButton(onClick = {
             productionRules.removeAt(i)
+            formUnvalidated.value = true
         }) {
             Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
         }
@@ -196,9 +246,10 @@ fun RulesScreen(
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     // Check for clicks outside (by design = unconsumed) to dismiss controls
-                    while(true){
+                    while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
+                            tryNewSpecification() //TODO
                             editingCursorPos.value = NOT_EDITING
                             editingRow.value = NOT_EDITING
                             editingString.value = EMPTY_STRING
@@ -214,7 +265,7 @@ fun RulesScreen(
                     .consumeClickEventsWhen { editingRow.value == EDITING_AXIOM }) {
                 AccursedText(axiom, EDITING_AXIOM)
             }
-            if (editingRow.value == EDITING_AXIOM) EditRow()
+            if (editingRow.value == EDITING_AXIOM) EditTray()
         }
         LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)) {
             productionRules.forEachIndexed { iRule, pr ->
@@ -237,7 +288,7 @@ fun RulesScreen(
                         }
                     }
                 }
-                if (editingRow.value == iRule) EditRow()
+                if (editingRow.value == iRule) EditTray()
             }
         }
         Column(
@@ -247,7 +298,10 @@ fun RulesScreen(
         ) {
             Row(horizontalArrangement = Arrangement.Center) {
                 Button(
-                    onClick = { productionRules.add(Production(" ", " ")) }
+                    onClick = {
+                        productionRules.add(Production(" ", " "))
+                        formUnvalidated.value = true
+                    }
                 ) {
                     Text(LocalContext.current.getString(R.string.rules_btn_add))
                 }
@@ -257,6 +311,15 @@ fun RulesScreen(
                     Text(LocalContext.current.getString(R.string.rules_btn_alter))
                 }
             }
+        }
+    }
+    val context = LocalContext.current
+    LaunchedEffect(leavingScreen){
+        if(leavingScreen == ArboretumScreen.Rules){
+            tryNewSpecification()
+            if(formUnvalidated.value && messagesInvalid.value != null) Toast.makeText(context,
+                context.getString(R.string.rules_msg_abandon_invalid),
+                Toast.LENGTH_LONG).show()
         }
     }
 }

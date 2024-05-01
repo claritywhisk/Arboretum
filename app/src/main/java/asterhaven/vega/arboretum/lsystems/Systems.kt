@@ -56,7 +56,7 @@ class SpecificationBuilder {
             pr.add(it)
         }
     }
-    fun build() = Specification(cons, i, n, pa, pr)
+    fun build() = Specification(n, i, pr, pa, cons)
 }
 
 fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification =

@@ -40,6 +40,7 @@ fun ArboretumApp(
     var currentScreen by remember { mutableStateOf(startTab) }
 
     fun navigateTo(newScreen : ArboretumScreen) {
+        viewModel.setLeavingScreen(currentScreen)
         navController.navigate(newScreen.name)
         currentScreen = newScreen
     }
@@ -69,7 +70,7 @@ fun ArboretumApp(
                 })
             }
             composable(route = ArboretumScreen.Rules.name){
-                RulesScreen(viewModel.specification.value!!)
+                RulesScreen(viewModel.specification.value!!, viewModel::updateSpecification, viewModel.leavingScreen.value)
             }
             composable(route = ArboretumScreen.Collection.name){
                 CollectionScreen(viewModel.specification.value!!, viewModel::updateSpecification)

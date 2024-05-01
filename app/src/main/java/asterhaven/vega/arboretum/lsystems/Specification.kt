@@ -5,11 +5,11 @@ import dev.nesk.akkurate.annotations.Validate
 //a representation of an L-system, with metadata, input from text with spaces
 @Validate
 data class Specification(
-    val constants: HashMap<String, Float> = HashMap(),
-    val initial : String,
     val name : String, //todo metadata object
+    val initial : String,
+    val productions : ArrayList<Production> = arrayListOf(),
     val params : ArrayList<Parameter> = arrayListOf(),
-    val productions : ArrayList<Production> = arrayListOf()
+    val constants: HashMap<String, Float> = HashMap() //symbols from params
 ) {
     @Validate data class Parameter(
         val symbol: String,
