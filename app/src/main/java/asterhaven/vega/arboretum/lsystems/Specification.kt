@@ -7,8 +7,8 @@ import dev.nesk.akkurate.annotations.Validate
 data class Specification(
     val name : String, //todo metadata object
     val initial : String,
-    val productions : ArrayList<Production> = arrayListOf(),
-    val params : ArrayList<Parameter> = arrayListOf(),
+    val productions : List<Production> = arrayListOf(),
+    val params : List<Parameter> = arrayListOf(),
     val constants: HashMap<String, Float> = HashMap() //symbols from params
 ) {
     @Validate data class Parameter(
@@ -33,7 +33,7 @@ data class Specification(
             while (m.find()) {
                 val a = when (val p = m.group(3)) {
                     null -> Float.NaN
-                    else -> constants[p] ?: p.toFloat()
+                    else -> constants[p] ?: p.toFloat() //is it in constants?
                 }
                 it += LWord.parse(m.group(1)!!, a)
             }

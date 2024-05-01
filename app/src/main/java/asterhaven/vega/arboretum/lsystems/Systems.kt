@@ -38,12 +38,14 @@ class SpecificationBuilder {
     private var n = ""
     private val pa = arrayListOf<Specification.Parameter>()
     private val pr = arrayListOf<Specification.Production>()
+    private var hasSteps = false
     fun initial(s : String){
         i = s
     }
     fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
         pa.add(Specification.Parameter(symbol, name, type, value))
         cons[symbol] = value
+        if(type is DerivationSteps) hasSteps = true
     }
     fun constant(symbol : String, value : Float, name : String = "") =
         param(symbol, value, name, TrueConstant(value))
@@ -56,28 +58,26 @@ class SpecificationBuilder {
             pr.add(it)
         }
     }
+    fun addStepsIfMissing() {
+        if(!hasSteps) param("", DEFAULT_STEPS.toFloat(), "Steps",
+            DerivationSteps(DEFAULT_STEPS_SLIDER_MAX))
+    }
     fun build() = Specification(n, i, pr, pa, cons)
 }
 
-fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification =
-    SpecificationBuilder().apply(lambda).build().apply {
-        when(params.firstOrNull { p -> p.type is DerivationSteps}) {
-            null -> params.add(
-                Specification.Parameter(
-                    "",
-                    "Steps",
-                    DerivationSteps(DEFAULT_STEPS_SLIDER_MAX),
-                    DEFAULT_STEPS.toFloat()
-                )
-            )
-            else -> {}
+fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification {
+    val spec = SpecificationBuilder().apply {
+        lambda()
+        addStepsIfMissing()
+    }.build()
+    when (val result = SpecificationRegexAndValidation.validateSpecification(spec)) {
+        is ValidationResult.Failure -> {
+            val s = result.violations.joinToString { cvs -> "  - ${cvs.path}: ${cvs.message}" }
+            throw IllegalArgumentException("Systems.kt validation \n$s")
         }
-        when(val result = SpecificationRegexAndValidation.validateSpecification(this)){
-            is ValidationResult.Failure -> {
-                val s = result.violations.joinToString { cvs -> "  - ${cvs.path}: ${cvs.message}" }
-                throw IllegalArgumentException("Systems.kt validation \n$s")
-            }
-            is ValidationResult.Success -> { }
-        }
+
+        is ValidationResult.Success -> {}
     }
+    return spec
+}
 
