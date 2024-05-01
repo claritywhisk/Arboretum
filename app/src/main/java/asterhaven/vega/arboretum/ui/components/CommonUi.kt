@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
@@ -23,9 +23,9 @@ import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.UnitInterval
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
+import dev.nesk.akkurate.ValidationResult
 import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ParameterSetter (
     paramWrapper : ArboretumViewModel.ViewModelParamWrapper
@@ -69,9 +69,25 @@ fun ParamPreview() = ParameterSetter(
 )
 
 @Composable
-fun LabeledSection(label: String, content: @Composable() (ColumnScope.() -> Unit)) {
-    Column(modifier = Modifier.padding(bottom = 16.dp)) {
-        Text(label)
-        content()
+fun LabeledSection(
+    label: String,
+    error: ValidationResult.Failure?,
+    content: @Composable (ColumnScope.() -> Unit)
+) {
+    CanShowErrorBelow(error) {
+        Column(modifier = Modifier.padding(bottom = 16.dp)) {
+            Text(label)
+            content()
+        }
+    }
+}
+
+@Composable
+fun CanShowErrorBelow(error: ValidationResult.Failure?, content: @Composable () -> Unit) {
+    Row { content() }
+    error?.violations?.forEach {
+        Row {
+            Text(it.message, color = MaterialTheme.colorScheme.error)
+        }
     }
 }

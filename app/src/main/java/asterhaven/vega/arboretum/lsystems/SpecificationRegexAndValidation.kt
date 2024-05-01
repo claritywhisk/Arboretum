@@ -42,7 +42,7 @@ object SpecificationRegexAndValidation {
     val validateParameter by lazy {
         Validator<Specification.Parameter> {
             constrain { type.unwrap().range.contains(initialValue.unwrap()) } otherwise {
-                "Parameter value out of provided range."
+                "Parameter value outside of provided range."
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -66,16 +67,27 @@ fun RulesScreen(
     leavingScreen : ArboretumScreen?
 ) {
     val axiom by remember { mutableStateOf(baseSpecification.initial) }
-    val productionRules =
-        remember { mutableStateListOf(*baseSpecification.productions.toTypedArray()) }
+    val productionRules = remember { mutableStateListOf<Production>().apply {
+        baseSpecification.productions.forEach { add(it.copy()) }
+    } }
     val newParams = remember { mutableStateOf(copyOfParams(baseSpecification.params)) }
+
+    fun errOK() = mutableStateOf<ValidationResult.Failure?>(null)
+    val errorAxiom = remember { errOK() }
+    val errorsProductions = remember { mutableStateListOf<ValidationResult.Failure?>().apply{
+        repeat(productionRules.size) { add(null) }
+    } }
+    val errorParams = remember { errOK() }
+    val errorOverall = remember { errOK() }
 
     val editingCursorPos = remember { mutableStateOf(NOT_EDITING) }
     val editingRow = remember { mutableStateOf(NOT_EDITING) }
     val editingString = remember { mutableStateOf(EMPTY_STRING) }
-    val formUnvalidated = remember { mutableStateOf(false) }
-    val messagesInvalid = remember { mutableStateOf<ValidationResult.Failure?>(null) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+
+    val formUnvalidated = remember { mutableStateOf(false) }
+    //val messagesInvalid = remember { mutableStateOf<ValidationResult.Failure?>(null) }
+
 
     fun tryNewSpecification() {
         val newSpecification = Specification(
@@ -89,10 +101,10 @@ fun RulesScreen(
         )
         when(val result = SpecificationRegexAndValidation.validateSpecification(newSpecification)){
             is ValidationResult.Success -> {
-                messagesInvalid.value = null
+                errorOverall.value = null
                 updateSpecification(newSpecification)
             }
-            is ValidationResult.Failure -> messagesInvalid.value = result
+            is ValidationResult.Failure -> errorOverall.value = result
         }
         formUnvalidated.value = false
     }
@@ -116,37 +128,43 @@ fun RulesScreen(
     }
 
     @Composable
-    fun AccursedText(text: String, thisRow : Int, modifier: Modifier = Modifier) {
+    fun AccursedText(initializingText: String, thisRow : Int, modifier: Modifier = Modifier) {
         val editingThis = remember { mutableStateOf(false) }
+        val myText = remember { mutableStateOf(initializingText) }
         LaunchedEffect(editingRow) {
             if(editingRow.value == NOT_EDITING) editingThis.value = false
+        }
+        LaunchedEffect(editingString) {
+            if(editingThis.value) myText.value = editingString.value
         }
         ClickableText(
             modifier = modifier.padding(8.dp),
             style = TextStyle(color = MaterialTheme.colorScheme.onBackground),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
-                append(text)
+                append(myText.value)
                 if(editingThis.value) {
                     val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
-                    if (text[editingCursorPos.value] == '(') {
-                        addStyle(sStyle, editingCursorPos.value - 1, editingCursorPos.value + 1)
-                        val iRightParen = (editingCursorPos.value..text.lastIndex)
-                            .first { text[it] == ')' }
+                    val c = editingCursorPos.value
+                    if (myText.value[c] == '(') {
+                        addStyle(sStyle, c - 1, c + 1)
+                        val iRightParen = (c..myText.value.lastIndex)
+                            .first { myText.value[it] == ')' }
                         addStyle(sStyle, iRightParen, iRightParen + 1)
-                    } else addStyle(sStyle, editingCursorPos.value, editingCursorPos.value + 1)
+                    } else addStyle(sStyle, c, c + 1)
                 }
             }
-        ) { clickedCharOffset ->
-            val nextI = clickedCharOffset + 1
+        ) { clickedI ->
+            val text = myText.value
+            val nextI = clickedI + 1
             editingCursorPos.value = when {
                 nextI <= text.lastIndex && text[nextI] == '(' -> nextI
-                text[clickedCharOffset] == ',' -> clickedCharOffset - 1
-                text[clickedCharOffset] == ')' -> clickedCharOffset - 1
-                else -> clickedCharOffset
+                text[clickedI] == ',' -> clickedI - 1
+                text[clickedI] == ')' -> clickedI - 1
+                else -> clickedI
             }
             editingRow.value = thisRow
-            editingString.value = text
+            editingString.value = initializingText
             editingThis.value = true
         }
     }
@@ -179,13 +197,19 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
-            IconButton(enabled = formUnvalidated.value, onClick = {
+            if(formUnvalidated.value) TextButton(onClick = {
                 tryNewSpecification()
             }) {
-                if(formUnvalidated.value)
-                    Text(LocalContext.current.getString(R.string.rules_btn_validate))
-                else if(messagesInvalid.value == null) Icon(Icons.Default.Warning, contentDescription = "Review errors")
-                else Icon(Icons.Default.Check, contentDescription = "Rules are valid")
+                Text(LocalContext.current.getString(R.string.rules_btn_validate))
+            }
+            else IconButton(onClick = {}) {
+                val errRow = editingRow.value.let { r ->
+                    if (r == EDITING_AXIOM) errorAxiom.value
+                    else errorsProductions[r]
+                }
+                if (errRow == null)
+                    Icon(Icons.Default.Check, contentDescription = "Rules are valid")
+                else Icon(Icons.Default.Warning, contentDescription = "Review errors")
             }
         }
         Row {
@@ -221,18 +245,21 @@ fun RulesScreen(
     fun ReorderDeleteButtons(i : Int){
         IconButton(enabled = i > 0, onClick = {
             productionRules.add(i - 1, productionRules.removeAt(i))
+            errorsProductions.add(i - 1, errorsProductions.removeAt(i))
             formUnvalidated.value = true
         }) {
             Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
         }
         IconButton(enabled = i != productionRules.lastIndex, onClick = {
             productionRules.add(i + 1, productionRules.removeAt(i))
+            errorsProductions.add(i + 1, errorsProductions.removeAt(i))
             formUnvalidated.value = true
         }) {
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
         }
         IconButton(onClick = {
             productionRules.removeAt(i)
+            errorsProductions.removeAt(i)
             formUnvalidated.value = true
         }) {
             Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
@@ -258,7 +285,7 @@ fun RulesScreen(
                 }
             }
     ) {
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom)) {
+        LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom), errorAxiom.value) {
             Row(
                 Modifier
                     .fillMaxWidth()
@@ -267,7 +294,7 @@ fun RulesScreen(
             }
             if (editingRow.value == EDITING_AXIOM) EditTray()
         }
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_productions)) {
+        LabeledSection(LocalContext.current.getString(R.string.rules_label_productions), errorOverall.value) {
             productionRules.forEachIndexed { iRule, pr ->
                 Row(modifier = Modifier
                     .fillMaxWidth()
@@ -317,7 +344,7 @@ fun RulesScreen(
     LaunchedEffect(leavingScreen){
         if(leavingScreen == ArboretumScreen.Rules){
             tryNewSpecification()
-            if(formUnvalidated.value && messagesInvalid.value != null) Toast.makeText(context,
+            if(formUnvalidated.value && errorOverall.value != null) Toast.makeText(context,
                 context.getString(R.string.rules_msg_abandon_invalid),
                 Toast.LENGTH_LONG).show()
         }
