@@ -57,9 +57,6 @@ private const val NOT_EDITING = -1
 private const val EDITING_AXIOM = Int.MAX_VALUE
 private const val EMPTY_STRING = ""
 
-private fun copyOfParams(params : ArrayList<Specification.Parameter>) =
-    ArrayList<Specification.Parameter>().apply{ params.forEach { p -> add(p.copy()) }}
-
 @Composable
 fun RulesScreen(
     baseSpecification : Specification, //the selected spec which this screen shows/modifies
@@ -70,33 +67,38 @@ fun RulesScreen(
     val productionRules = remember { mutableStateListOf<Production>().apply {
         baseSpecification.productions.forEach { add(it.copy()) }
     } }
-    val newParams = remember { mutableStateOf(copyOfParams(baseSpecification.params)) }
+    val newParams = remember { mutableStateListOf<Specification.Parameter>().apply {
+        baseSpecification.params.forEach { add(it.copy()) }
+    } }
 
     fun errOK() = mutableStateOf<ValidationResult.Failure?>(null)
-    val errorAxiom = remember { errOK() }
-    val errorsProductions = remember { mutableStateListOf<ValidationResult.Failure?>().apply{
-        repeat(productionRules.size) { add(null) }
-    } }
-    val errorParams = remember { errOK() }
-    val errorOverall = remember { errOK() }
+    fun errsOK(k : Int) = mutableStateListOf<ValidationResult.Failure?>().apply{
+        repeat(k) { add(null) }
+    }
+    val errorAxiom              = remember { errOK() }
+    val errorsProductions       = remember { errsOK(productionRules.size) }
+    val errorOverall            = remember { errOK() }
+    val errorsParamIndividual   = remember { errsOK(newParams.size) }
+    val errorParams             = remember { errOK() }
 
-    val editingCursorPos = remember { mutableStateOf(NOT_EDITING) }
-    val editingRow = remember { mutableStateOf(NOT_EDITING) }
-    val editingString = remember { mutableStateOf(EMPTY_STRING) }
+    fun noEdit() = mutableStateOf(NOT_EDITING)
+    val editingCursorPos    = remember { noEdit() }
+    val editingRow          = remember { noEdit() }
+    val editingParam        = remember { noEdit() }
+    val editingString       = remember { mutableStateOf("") }
+    val formUnvalidated = remember { mutableStateOf(false) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
 
-    val formUnvalidated = remember { mutableStateOf(false) }
-    //val messagesInvalid = remember { mutableStateOf<ValidationResult.Failure?>(null) }
 
 
     fun tryNewSpecification() {
         val newSpecification = Specification(
             name ="todo",
             initial = axiom,
-            productions = ArrayList(productionRules.toList()),
-            params = newParams.value,
+            productions = productionRules.toList(),
+            params = newParams.toList(),
             constants = HashMap<String, Float>().apply {
-                newParams.value.forEach { p -> this[p.symbol] = p.initialValue }
+                newParams.forEach { p -> this[p.symbol] = p.initialValue }
             }
         )
         when(val result = SpecificationRegexAndValidation.validateSpecification(newSpecification)){
@@ -107,6 +109,31 @@ fun RulesScreen(
             is ValidationResult.Failure -> errorOverall.value = result
         }
         formUnvalidated.value = false
+    }
+    fun tryRowOrParam() {
+        when(val r = editingRow.value) {
+            NOT_EDITING -> {}
+            EDITING_AXIOM -> {
+                when(val result = SpecificationRegexAndValidation.validateAxiom(axiom)){
+                    is ValidationResult.Success -> errorAxiom.value = null
+                    is ValidationResult.Failure -> errorAxiom.value = result
+                }
+            }
+            else -> {
+                val pRule = productionRules[r]
+                when(val result = SpecificationRegexAndValidation.validateProduction(pRule)) {
+                    is ValidationResult.Success -> errorsProductions[r] = null
+                    is ValidationResult.Failure -> errorsProductions[r] = result
+                }
+            }
+        }
+        when(val p = editingParam.value) {
+            NOT_EDITING -> {}
+            else -> when(val result = SpecificationRegexAndValidation.validateParameter(newParams[p])) {
+                is ValidationResult.Success -> errorsParamIndividual[p] = null
+                is ValidationResult.Failure -> errorsParamIndividual[p] = result
+            }
+        }
     }
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
@@ -198,6 +225,7 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
             if(formUnvalidated.value) TextButton(onClick = {
+                tryRowOrParam()
                 tryNewSpecification()
             }) {
                 Text(LocalContext.current.getString(R.string.rules_btn_validate))
@@ -276,7 +304,8 @@ fun RulesScreen(
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
-                            tryNewSpecification() //TODO
+                            tryRowOrParam()
+                            tryNewSpecification()
                             editingCursorPos.value = NOT_EDITING
                             editingRow.value = NOT_EDITING
                             editingString.value = EMPTY_STRING

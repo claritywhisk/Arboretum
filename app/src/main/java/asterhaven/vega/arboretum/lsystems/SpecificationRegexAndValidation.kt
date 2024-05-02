@@ -20,7 +20,9 @@ object SpecificationRegexAndValidation {
 
     val validateSpecification by lazy {
         Validator<Specification> {
-            initial.isMatching(rgxValidRawSentence)
+            constrain {
+                validateAxiom(it.initial) is ValidationResult.Success
+            }
             productions.each { constrain {
                 validateProduction(it) is ValidationResult.Success
             }}
@@ -36,6 +38,12 @@ object SpecificationRegexAndValidation {
                 "No steps parameter."
             }
 
+        }
+    }
+
+    val validateAxiom by lazy {
+        Validator<String> {
+            isMatching(rgxValidRawSentence)
         }
     }
 
