@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -271,27 +272,31 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun ReorderDeleteButtons(i : Int){
+    fun <T> ReorderDeleteButtons( //for rules, symbols, or params lists
+        items : SnapshotStateList<T>,
+        errs : SnapshotStateList<ValidationResult.Failure?>,
+        i : Int,
+        itemDescription : String) {
         IconButton(enabled = i > 0, onClick = {
-            productionRules.add(i - 1, productionRules.removeAt(i))
-            errorsProductions.add(i - 1, errorsProductions.removeAt(i))
+            items.add(i - 1, items.removeAt(i))
+            errs.add(i - 1, errs.removeAt(i))
             formUnvalidated = true
         }) {
-            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move Rule Up")
+            Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move $itemDescription Up")
         }
-        IconButton(enabled = i != productionRules.lastIndex, onClick = {
-            productionRules.add(i + 1, productionRules.removeAt(i))
-            errorsProductions.add(i + 1, errorsProductions.removeAt(i))
+        IconButton(enabled = i != items.lastIndex, onClick = {
+            items.add(i + 1, items.removeAt(i))
+            errs.add(i + 1, errs.removeAt(i))
             formUnvalidated = true
         }) {
-            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move Rule Down")
+            Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move $itemDescription Down")
         }
         IconButton(onClick = {
             productionRules.removeAt(i)
             errorsProductions.removeAt(i)
             formUnvalidated = true
         }) {
-            Icon(Icons.Default.Delete, contentDescription = "Delete Rule")
+            Icon(Icons.Default.Delete, contentDescription = "Delete $itemDescription")
         }
     }
     //BEGIN Content of RulesScreen Composable
@@ -343,7 +348,7 @@ fun RulesScreen(
                         if (reorderDeleteButtonsVisible) {
                             Spacer(Modifier.weight(.01f))
                             Row(Modifier.align(Alignment.CenterVertically)) {
-                                ReorderDeleteButtons(iRule)
+                                ReorderDeleteButtons(productionRules, errorsProductions, iRule,"Rule")
                             }
                         }
                     }
