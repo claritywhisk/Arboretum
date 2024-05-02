@@ -7,6 +7,8 @@
     <string name="btn_populate">Populate</string>
     <string name="rules_label_axiom">Initial</string>
     <string name="rules_label_productions">Productions</string>
+    <string name="rules_label_custom_symbols">Symbols</string>
+    <string name="rules_label_parameters">Parameters</string>
     <string name="rules_btn_add">Add Rule</string>
     <string name="rules_btn_alter">Reorder/Delete</string>
     <string name="rules_btn_validate">Validate</string>

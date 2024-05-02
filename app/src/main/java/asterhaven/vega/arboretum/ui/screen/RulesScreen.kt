@@ -50,12 +50,12 @@ import asterhaven.vega.arboretum.lsystems.Specification.Production
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
 import asterhaven.vega.arboretum.ui.ArboretumScreen
+import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 import dev.nesk.akkurate.ValidationResult
 
 private const val NOT_EDITING = -1
 private const val EDITING_AXIOM = Int.MAX_VALUE
-private const val EMPTY_STRING = ""
 
 @Composable
 fun RulesScreen(
@@ -67,6 +67,7 @@ fun RulesScreen(
     val productionRules = remember { mutableStateListOf<Production>().apply {
         baseSpecification.productions.forEach { add(it.copy()) }
     } }
+    val symbols = remember { mutableStateListOf<Specification.Symbol>() }
     val newParams = remember { mutableStateListOf<Specification.Parameter>().apply {
         baseSpecification.params.forEach { add(it.copy()) }
     } }
@@ -78,6 +79,8 @@ fun RulesScreen(
     var errorAxiom              by remember { errOK() }
     var errorsProductions       = remember { errsOK(productionRules.size) }
     var errorOverall            by remember { errOK() }
+    var errorsSymbolIndividual  = remember { errsOK(symbols.size) }
+    var errorSymbols            by remember { errOK() }
     var errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
@@ -88,8 +91,6 @@ fun RulesScreen(
     var editingString       by remember { mutableStateOf("") }
     var formUnvalidated by remember { mutableStateOf(false) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
-
-
 
     fun tryNewSpecification() {
         val newSpecification = Specification(
@@ -308,7 +309,7 @@ fun RulesScreen(
                             tryNewSpecification()
                             editingCursorPos = NOT_EDITING
                             editingRow = NOT_EDITING
-                            editingString = EMPTY_STRING
+                            editingString = ""
                         }
                     }
                 }
@@ -325,48 +326,55 @@ fun RulesScreen(
         }
         LabeledSection(LocalContext.current.getString(R.string.rules_label_productions), errorOverall) {
             productionRules.forEachIndexed { iRule, pr ->
-                Row(modifier = Modifier
-                    .fillMaxWidth()
-                    .consumeClickEventsWhen { editingRow == iRule },
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    AccursedText(pr.before, iRule)
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-                    AccursedText(
-                        pr.after, iRule, Modifier
-                            .weight(1f)
-                            .width(IntrinsicSize.Max)
-                    )
-                    if (reorderDeleteButtonsVisible) {
-                        Spacer(Modifier.weight(.01f))
-                        Row(Modifier.align(Alignment.CenterVertically)) {
-                            ReorderDeleteButtons(iRule)
+                CanShowErrorBelow(error = errorsProductions[iRule]) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .consumeClickEventsWhen { editingRow == iRule },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        AccursedText(pr.before, iRule)
+                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
+                        AccursedText(
+                            pr.after, iRule, Modifier
+                                .weight(1f)
+                                .width(IntrinsicSize.Max)
+                        )
+                        if (reorderDeleteButtonsVisible) {
+                            Spacer(Modifier.weight(.01f))
+                            Row(Modifier.align(Alignment.CenterVertically)) {
+                                ReorderDeleteButtons(iRule)
+                            }
                         }
                     }
                 }
                 if (editingRow == iRule) EditTray()
             }
         }
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 16.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.Center) {
-                Button(
-                    onClick = {
-                        productionRules.add(Production(" ", " "))
-                        formUnvalidated = true
-                    }
-                ) {
-                    Text(LocalContext.current.getString(R.string.rules_btn_add))
+        //Buttons controlling add, reorder/delete rules
+        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)) {
+            Button(
+                onClick = {
+                    productionRules.add(Production(" ", " "))
+                    errorsProductions.add(null)
+                    formUnvalidated = true
                 }
-                Button(
-                    onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
-                ) {
-                    Text(LocalContext.current.getString(R.string.rules_btn_alter))
-                }
+            ) {
+                Text(LocalContext.current.getString(R.string.rules_btn_add))
             }
+            Button(
+                onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
+            ) {
+                Text(LocalContext.current.getString(R.string.rules_btn_alter))
+            }
+        }
+        if(symbols.isNotEmpty()) LabeledSection(LocalContext.current.getString(R.string.rules_label_custom_symbols), errorSymbols) {
+            //todo
+        }
+        LabeledSection(LocalContext.current.getString(R.string.rules_label_parameters), errorParams) {
+            //todo
         }
     }
     val context = LocalContext.current

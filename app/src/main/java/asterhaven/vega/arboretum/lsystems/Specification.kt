@@ -17,10 +17,8 @@ data class Specification(
         val type: ParameterType,
         val initialValue: Float
     )
-    @Validate data class Production(
-        val before: String,
-        val after: String
-    )
+    @Validate data class Production(val before: String, val after: String)
+    @Validate data class Symbol(val symbol : String, val meaning : String)
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
         constants[symbol] = value

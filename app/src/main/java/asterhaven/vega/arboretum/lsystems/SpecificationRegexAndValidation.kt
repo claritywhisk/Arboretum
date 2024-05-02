@@ -47,6 +47,13 @@ object SpecificationRegexAndValidation {
         }
     }
 
+    val validateSymbol by lazy {
+        Validator<Specification.Symbol> {
+            //unwrap().meaning.isMatching(rgxValidRawSentence)
+            //all TODO this file
+        }
+    }
+
     val validateParameter by lazy {
         Validator<Specification.Parameter> {
             constrain { type.unwrap().range.contains(initialValue.unwrap()) } otherwise {
