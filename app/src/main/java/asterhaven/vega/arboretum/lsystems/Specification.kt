@@ -34,7 +34,7 @@ data class Specification(
                     null -> Float.NaN
                     else -> constants[p] ?: p.toFloat() //is it in constants?
                 }
-                it += LWord.parse(m.group(1)!!, a)
+                it += LWord.LSymbol.parse(m.group(1)!!, a)
             }
         }
         val rules = Array(productions.size) { rI ->
@@ -48,7 +48,7 @@ data class Specification(
                     m.find()
                     val p = m.group(3)
                     if (p != null) onParam(p)
-                    LWord.parse(m.group(1)!!, Float.NaN)
+                    LWord.LSymbol.parse(m.group(1)!!, Float.NaN)
                 }
             }
 

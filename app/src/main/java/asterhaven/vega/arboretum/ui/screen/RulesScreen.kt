@@ -45,7 +45,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
-import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.lsystems.LWord
 import asterhaven.vega.arboretum.lsystems.Specification
@@ -270,11 +269,11 @@ fun RulesScreen(
         Row {
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 //TODO choose params
-                LWord.standardSymbols.forEach {
+                LWord.LSymbol.standardSymbols.forEach {
                     DropdownMenuItem(
                         text = {
                             Row {
-                                Text(it.symbol.toString() + "\t\t\t")
+                                Text(it.symbol + "\t\t\t")
                                 Text(it.desc)
                             }
                         },
