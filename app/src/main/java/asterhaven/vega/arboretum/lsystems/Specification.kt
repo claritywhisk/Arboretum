@@ -11,14 +11,15 @@ data class Specification(
     val params : List<Parameter> = arrayListOf(),
     val constants: HashMap<String, Float> = HashMap() //symbols from params
 ) {
+    sealed interface Item
     @Validate data class Parameter(
         val symbol: String,
         val name: String,
         val type: ParameterType,
         val initialValue: Float
-    )
-    @Validate data class Production(val before: String, val after: String)
-    @Validate data class Symbol(val symbol : String, val meaning : String)
+    ) : Item
+    @Validate data class Production(val before: String, val after: String) : Item
+    @Validate data class Symbol(val symbol : String, val meaning : String) : Item
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
         constants[symbol] = value

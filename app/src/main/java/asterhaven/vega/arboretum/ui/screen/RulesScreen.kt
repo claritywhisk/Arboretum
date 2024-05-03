@@ -47,16 +47,19 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.lsystems.LWord
-import asterhaven.vega.arboretum.lsystems.Specification.Production
 import asterhaven.vega.arboretum.lsystems.Specification
+import asterhaven.vega.arboretum.lsystems.Specification.Item
+import asterhaven.vega.arboretum.lsystems.Specification.Parameter
+import asterhaven.vega.arboretum.lsystems.Specification.Production
+import asterhaven.vega.arboretum.lsystems.Specification.Symbol
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
+import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.ui.ArboretumScreen
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 import dev.nesk.akkurate.ValidationResult
-
-private const val NOT_EDITING = -1
-private const val EDITING_AXIOM = Int.MAX_VALUE
+import java.lang.IllegalStateException
+import kotlin.reflect.KClass
 
 @Composable
 fun RulesScreen(
@@ -64,12 +67,19 @@ fun RulesScreen(
     updateSpecification: (Specification) -> Unit,
     leavingScreen : ArboretumScreen?
 ) {
+    class Section(val heading : String)
+    val NONE = Section("")
+    val AXIOM = Section(LocalContext.current.getString(R.string.rules_label_axiom))
+    val RULES = Section(LocalContext.current.getString(R.string.rules_label_productions))
+    val SYMBOLS = Section(LocalContext.current.getString(R.string.rules_label_custom_symbols))
+    val PARAMS = Section(LocalContext.current.getString(R.string.rules_label_parameters))
+
     val axiom by remember { mutableStateOf(baseSpecification.initial) }
     val productionRules = remember { mutableStateListOf<Production>().apply {
         baseSpecification.productions.forEach { add(it.copy()) }
     } }
-    val symbols = remember { mutableStateListOf<Specification.Symbol>() }
-    val newParams = remember { mutableStateListOf<Specification.Parameter>().apply {
+    val symbols = remember { mutableStateListOf<Symbol>() }
+    val newParams = remember { mutableStateListOf<Parameter>().apply {
         baseSpecification.params.forEach { add(it.copy()) }
     } }
 
@@ -85,12 +95,13 @@ fun RulesScreen(
     var errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
-    fun noEdit() = mutableStateOf(NOT_EDITING)
-    var editingCursorPos    by remember { noEdit() }
-    var editingRow          by remember { noEdit() }
-    var editingParam        by remember { noEdit() }
+    val NOT_EDITING = -1
+    var editingSection      =  remember { NONE }
+    var editingRow          =  remember { NOT_EDITING }
+    var editingCursorPos    =  remember { NOT_EDITING }
     var editingString       by remember { mutableStateOf("") }
-    var formUnvalidated by remember { mutableStateOf(false) }
+    var editingIsInParens           by remember { mutableStateOf(false) }
+    var formUnvalidated             by remember { mutableStateOf(false) }
     var reorderDeleteButtonsVisible by remember { mutableStateOf(false) }
 
     fun tryNewSpecification() {
@@ -112,29 +123,31 @@ fun RulesScreen(
         }
         formUnvalidated = false
     }
-    fun tryRowOrParam() {
-        when(val r = editingRow) {
-            NOT_EDITING -> {}
-            EDITING_AXIOM -> {
-                when(val result = SpecificationRegexAndValidation.validateAxiom(axiom)){
-                    is ValidationResult.Success -> errorAxiom = null
-                    is ValidationResult.Failure -> errorAxiom = result
+    fun errForCurrentRow() : ValidationResult.Failure? = when(editingSection){
+         //todo fun used once, put diff location
+        AXIOM  -> errorAxiom
+        RULES  -> errorsProductions[editingRow]
+        SYMBOLS-> errorsSymbolIndividual[editingRow]
+        PARAMS -> errorsParamIndividual[editingRow]
+        else   -> null
+    }
+    fun tryRow() {
+        when(editingSection){
+            AXIOM -> errorAxiom = when(val result =
+                SpecificationRegexAndValidation.validateAxiom(axiom)){
+                    is ValidationResult.Success -> null
+                    is ValidationResult.Failure -> result
                 }
-            }
-            else -> {
-                val pRule = productionRules[r]
-                when(val result = SpecificationRegexAndValidation.validateProduction(pRule)) {
-                    is ValidationResult.Success -> errorsProductions[r] = null
-                    is ValidationResult.Failure -> errorsProductions[r] = result
+            RULES -> errorsProductions[editingRow] = when(val result =
+                SpecificationRegexAndValidation.validateProduction(productionRules[editingRow])) {
+                    is ValidationResult.Success -> null
+                    is ValidationResult.Failure -> result
                 }
-            }
-        }
-        when(val p = editingParam) {
-            NOT_EDITING -> {}
-            else -> when(val result = SpecificationRegexAndValidation.validateParameter(newParams[p])) {
+            /*when(val result = SpecificationRegexAndValidation.validateParameter(newParams[p])) {
                 is ValidationResult.Success -> errorsParamIndividual[p] = null
                 is ValidationResult.Failure -> errorsParamIndividual[p] = result
-            }
+            }*/
+            else -> {} //todo refactor function and add sect cases
         }
     }
 
@@ -157,11 +170,25 @@ fun RulesScreen(
     }
 
     @Composable
-    fun AccursedText(initializingText: String, thisRow : Int, modifier: Modifier = Modifier) {
+    fun AccursedText(initializingText: String, thisSection : Section, thisRow : Int,
+                     modifier: Modifier = Modifier) {
         var editingThis by remember { mutableStateOf(false) }
         var myText by remember { mutableStateOf(initializingText) }
-        LaunchedEffect(editingRow) {
-            if(editingRow == NOT_EDITING) editingThis = false
+
+        fun isInParens() : Boolean {
+            var i = editingCursorPos + 1
+            while(i in myText.indices) when(myText[i]) {
+                '(' -> return false
+                ')' -> return true
+                else -> i++
+            }
+            return false
+        }
+        LaunchedEffect(editingCursorPos) {
+            if(editingThis) editingIsInParens = isInParens()
+        }
+        LaunchedEffect(editingRow, editingSection) {
+            if(editingRow == NOT_EDITING || editingSection == NONE) editingThis = false
         }
         LaunchedEffect(editingString) {
             if(editingThis) myText = editingString
@@ -187,18 +214,21 @@ fun RulesScreen(
             val text = myText
             val nextI = clickedI + 1
             editingCursorPos = when {
+                //rest on the opening paren of each parametric word
                 nextI <= text.lastIndex && text[nextI] == '(' -> nextI
                 text[clickedI] == ',' -> clickedI - 1
                 text[clickedI] == ')' -> clickedI - 1
                 else -> clickedI
             }
             editingRow = thisRow
+            editingSection = thisSection
             editingString = initializingText
             editingThis = true
         }
     }
     @Composable
     fun EditTray() {
+        //todo depending on section and specific field
         Row(Modifier.consumeClickEvents()) {
             fun charAtCursor(offset : Int) = editingString[editingCursorPos + offset]
             IconButton(enabled = editingCursorPos > 0, onClick = {
@@ -227,24 +257,23 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
             if(formUnvalidated) TextButton(onClick = {
-                tryRowOrParam()
+                tryRow()
                 tryNewSpecification()
             }) {
                 Text(LocalContext.current.getString(R.string.rules_btn_validate))
             }
             else IconButton(onClick = {}) {
-                val errRow = editingRow.let { r ->
-                    if (r == EDITING_AXIOM) errorAxiom
-                    else errorsProductions[r]
+                if (errForCurrentRow() == null) {
+                    Icon(Icons.Default.Check, contentDescription = "Row is valid")
+                    if(errorOverall == null) Icon(Icons.Default.Check, contentDescription = "All valid!")
+                    else Icon(Icons.Default.Warning, contentDescription = "Review errors")
                 }
-                if (errRow == null)
-                    Icon(Icons.Default.Check, contentDescription = "Rules are valid")
-                else Icon(Icons.Default.Warning, contentDescription = "Review errors")
+                else Icon(Icons.Default.Warning, contentDescription = "Check item for errors")
             }
         }
         Row {
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
-                //todo choose params
+                //TODO choose params
                 LWord.standardSymbols.forEach {
                     DropdownMenuItem(
                         text = {
@@ -299,6 +328,66 @@ fun RulesScreen(
             Icon(Icons.Default.Delete, contentDescription = "Delete $itemDescription")
         }
     }
+    @Composable
+    fun <T : Item> GroupLabeledSection(
+        section : Section,
+        c : KClass<T>,
+        error : ValidationResult.Failure?,
+        items : SnapshotStateList<T>,
+        itemName : String,
+        itemErrors : SnapshotStateList<ValidationResult.Failure?>,
+        itemContent: @Composable (Int, T) -> Unit) {
+        if(items.isNotEmpty()) LabeledSection(section.heading, error) {
+            items.forEachIndexed { iItem, item ->
+                fun editingMe() = editingSection == section && editingRow == iItem
+                CanShowErrorBelow(error = itemErrors[iItem]) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .consumeClickEventsWhen { editingMe() },
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        //CONTENT
+                        itemContent(iItem, item)
+                        if (reorderDeleteButtonsVisible) { //todo variable in group section
+                            Spacer(Modifier.weight(.01f))
+                            Row(Modifier.align(Alignment.CenterVertically)) {
+                                ReorderDeleteButtons(items, itemErrors, iItem,itemName)
+                            }
+                        }
+                    }
+                }
+                if (editingMe()) EditTray()
+            }
+        }
+        //Buttons controlling add, reorder/delete rules
+        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 16.dp)) {
+            Button(onClick = {
+                items.add(
+                    when(c) {
+                        Parameter::class -> {
+                            val X = 1f
+                            Parameter("", "", TrueConstant(X), X) //todo weird
+                        }
+                        Production::class -> Production(" ", " ")
+                        Symbol::class -> Symbol("A", "Apex")
+                        else -> throw IllegalStateException("Type?")
+                    } as T
+                )
+                errorsProductions.add(null)
+                formUnvalidated = true
+            }) {
+                Text(LocalContext.current.getString(R.string.rules_btn_add, itemName))
+            }
+            Button(
+                onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
+            ) {
+                Text(LocalContext.current.getString(R.string.rules_btn_alter))
+            }
+        }
+    }
     //BEGIN Content of RulesScreen Composable
     Column(
         modifier = Modifier
@@ -310,7 +399,7 @@ fun RulesScreen(
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
-                            tryRowOrParam()
+                            tryRow()
                             tryNewSpecification()
                             editingCursorPos = NOT_EDITING
                             editingRow = NOT_EDITING
@@ -324,61 +413,46 @@ fun RulesScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .consumeClickEventsWhen { editingRow == EDITING_AXIOM }) {
-                AccursedText(axiom, EDITING_AXIOM)
+                    .consumeClickEventsWhen { editingSection == AXIOM }) {
+                AccursedText(axiom, AXIOM, 0)
             }
-            if (editingRow == EDITING_AXIOM) EditTray()
+            if (editingSection == AXIOM) EditTray()
         }
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_productions), errorOverall) {
-            productionRules.forEachIndexed { iRule, pr ->
-                CanShowErrorBelow(error = errorsProductions[iRule]) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .consumeClickEventsWhen { editingRow == iRule },
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AccursedText(pr.before, iRule)
-                        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-                        AccursedText(
-                            pr.after, iRule, Modifier
-                                .weight(1f)
-                                .width(IntrinsicSize.Max)
-                        )
-                        if (reorderDeleteButtonsVisible) {
-                            Spacer(Modifier.weight(.01f))
-                            Row(Modifier.align(Alignment.CenterVertically)) {
-                                ReorderDeleteButtons(productionRules, errorsProductions, iRule,"Rule")
-                            }
-                        }
-                    }
-                }
-                if (editingRow == iRule) EditTray()
-            }
+        GroupLabeledSection(
+            section = RULES,
+            c = Production::class,
+            error = errorOverall, //showing system errors here in the middle... for now
+            items = productionRules,
+            itemName = LocalContext.current.getString(R.string.rules_item_rule),
+            itemErrors = errorsProductions
+        ) {
+            iRule, pr ->
+            AccursedText(pr.before, RULES, iRule)
+            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
+            AccursedText(pr.after, RULES, iRule, Modifier
+                .weight(1f)
+                .width(IntrinsicSize.Max))
         }
-        //Buttons controlling add, reorder/delete rules
-        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 16.dp)) {
-            Button(
-                onClick = {
-                    productionRules.add(Production(" ", " "))
-                    errorsProductions.add(null)
-                    formUnvalidated = true
-                }
-            ) {
-                Text(LocalContext.current.getString(R.string.rules_btn_add))
-            }
-            Button(
-                onClick = { reorderDeleteButtonsVisible = !reorderDeleteButtonsVisible }
-            ) {
-                Text(LocalContext.current.getString(R.string.rules_btn_alter))
-            }
-        }
-        if(symbols.isNotEmpty()) LabeledSection(LocalContext.current.getString(R.string.rules_label_custom_symbols), errorSymbols) {
+        GroupLabeledSection(
+            section = SYMBOLS,
+            c = Symbol::class,
+            error = errorSymbols,
+            items = symbols,
+            itemName = LocalContext.current.getString(R.string.rules_item_symbol),
+            itemErrors = errorsSymbolIndividual
+        ) {
+            iSym, s ->
             //todo
         }
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_parameters), errorParams) {
+        GroupLabeledSection(
+            section = PARAMS,
+            c = Parameter::class,
+            error = errorParams,
+            items = newParams,
+            itemName = LocalContext.current.getString(R.string.rules_item_param),
+            itemErrors = errorsParamIndividual
+        ) {
+            iPara, p ->
             //todo
         }
     }

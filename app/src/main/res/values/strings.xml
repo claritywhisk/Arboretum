@@ -9,8 +9,11 @@
     <string name="rules_label_productions">Productions</string>
     <string name="rules_label_custom_symbols">Symbols</string>
     <string name="rules_label_parameters">Parameters</string>
-    <string name="rules_btn_add">Add Rule</string>
+    <string name="rules_btn_add">Add %s</string>
     <string name="rules_btn_alter">Reorder/Delete</string>
     <string name="rules_btn_validate">Validate</string>
     <string name="rules_msg_abandon_invalid">The changes to the rules could not be used as entered.</string>
+    <string name="rules_item_rule">Rule</string>
+    <string name="rules_item_symbol">Symbol</string>
+    <string name="rules_item_param">Parameter</string>
 </resources>
