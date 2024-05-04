@@ -2,24 +2,24 @@ package asterhaven.vega.arboretum.lsystems
 
 import dev.nesk.akkurate.annotations.Validate
 
-//a representation of an L-system, with metadata, input from text with spaces
+//a variable which becomes a number
+@Validate data class LParameter(
+    val symbol: String,
+    val name: String,
+    val type: ParameterType,
+    val initialValue: Float
+)
+//a replacement rule
+@Validate data class LProduction(val before: String, val after: String)
+//a representation of an L-system, with metadata, input from text possibly with spaces
 @Validate
 data class Specification(
     val name : String, //todo metadata object
     val initial : String,
-    val productions : List<Production> = arrayListOf(),
-    val params : List<Parameter> = arrayListOf(),
+    val productions : List<LProduction> = arrayListOf(),
+    val params : List<LParameter> = arrayListOf(),
     val constants: HashMap<String, Float> = HashMap() //symbols from params
 ) {
-    sealed interface Item
-    @Validate data class Parameter(
-        val symbol: String,
-        val name: String,
-        val type: ParameterType,
-        val initialValue: Float
-    ) : Item
-    @Validate data class Production(val before: String, val after: String) : Item
-    @Validate data class Symbol(val symbol : String, val meaning : String) : Item
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
         constants[symbol] = value
@@ -34,7 +34,7 @@ data class Specification(
                     null -> Float.NaN
                     else -> constants[p] ?: p.toFloat() //is it in constants?
                 }
-                it += LWord.LSymbol.parse(m.group(1)!!, a)
+                it += LSymbol.parseStandard(m.group(1)!!, a)
             }
         }
         val rules = Array(productions.size) { rI ->
@@ -48,7 +48,7 @@ data class Specification(
                     m.find()
                     val p = m.group(3)
                     if (p != null) onParam(p)
-                    LWord.LSymbol.parse(m.group(1)!!, Float.NaN)
+                    LSymbol.parseStandard(m.group(1)!!, Float.NaN)
                 }
             }
 

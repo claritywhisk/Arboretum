@@ -36,14 +36,14 @@ class SpecificationBuilder {
     private val cons = HashMap<String, Float>()
     private var i = ""
     private var n = ""
-    private val pa = arrayListOf<Specification.Parameter>()
-    private val pr = arrayListOf<Specification.Production>()
+    private val pa = arrayListOf<LParameter>()
+    private val pr = arrayListOf<LProduction>()
     private var hasSteps = false
     fun initial(s : String){
         i = s
     }
     fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
-        pa.add(Specification.Parameter(symbol, name, type, value))
+        pa.add(LParameter(symbol, name, type, value))
         cons[symbol] = value
         if(type is DerivationSteps) hasSteps = true
     }
@@ -53,7 +53,7 @@ class SpecificationBuilder {
     fun production(vararg s : String) = productions(*s)
     fun productions(vararg s : String){
         Array(s.size / 2){
-            Specification.Production(s[it * 2], s[it * 2 + 1])
+            LProduction(s[it * 2], s[it * 2 + 1])
         }.forEach {
             pr.add(it)
         }

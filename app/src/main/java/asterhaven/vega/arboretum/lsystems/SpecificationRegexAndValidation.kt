@@ -48,14 +48,14 @@ object SpecificationRegexAndValidation {
     }
 
     val validateSymbol by lazy {
-        Validator<Specification.Symbol> {
+        Validator<LSymbol> {
             //unwrap().meaning.isMatching(rgxValidRawSentence)
             //all TODO this file
         }
     }
 
     val validateParameter by lazy {
-        Validator<Specification.Parameter> {
+        Validator<LParameter> {
             constrain { type.unwrap().range.contains(initialValue.unwrap()) } otherwise {
                 "Parameter value outside of provided range."
             }
@@ -63,7 +63,7 @@ object SpecificationRegexAndValidation {
     }
 
     val validateProduction by lazy {
-        Validator<Specification.Production> {
+        Validator<LProduction> {
             (before and after){
                 isMatching(rgxValidRawSentence)
             }

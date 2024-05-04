@@ -9,6 +9,7 @@ import asterhaven.vega.arboretum.graphics.draw.Drawing
 import asterhaven.vega.arboretum.graphics.draw.Globe
 import asterhaven.vega.arboretum.graphics.draw.Tree
 import asterhaven.vega.arboretum.lsystems.DerivationSteps
+import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.Systems
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
@@ -61,7 +62,7 @@ class ArboretumViewModel : ViewModel() {
         _worldDrawings.value = newList
     }
 
-    inner class ViewModelParamWrapper(val p : Specification.Parameter){
+    inner class ViewModelParamWrapper(val p : LParameter){
         private val _valueMSF = MutableStateFlow(p.initialValue)
         val valueSF : StateFlow<Float> = _valueMSF
         fun onValueChange(f : Float){

@@ -46,12 +46,12 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.R
-import asterhaven.vega.arboretum.lsystems.LWord
+import asterhaven.vega.arboretum.data.model.SymbolSet
+import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
 import asterhaven.vega.arboretum.lsystems.Specification
-import asterhaven.vega.arboretum.lsystems.Specification.Item
-import asterhaven.vega.arboretum.lsystems.Specification.Parameter
-import asterhaven.vega.arboretum.lsystems.Specification.Production
-import asterhaven.vega.arboretum.lsystems.Specification.Symbol
+import asterhaven.vega.arboretum.lsystems.LParameter
+import asterhaven.vega.arboretum.lsystems.LProduction
+import asterhaven.vega.arboretum.lsystems.LSymbol
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
 import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.ui.ArboretumScreen
@@ -76,11 +76,11 @@ fun RulesScreen(
     val PARAMS = Section(LocalContext.current.getString(R.string.rules_label_parameters))
 
     val axiom by remember { mutableStateOf(baseSpecification.initial) }
-    val productionRules = remember { mutableStateListOf<Production>().apply {
+    val productionRules = remember { mutableStateListOf<LProduction>().apply {
         baseSpecification.productions.forEach { add(it.copy()) }
     } }
-    val symbols = remember { mutableStateListOf<Symbol>() }
-    val newParams = remember { mutableStateListOf<Parameter>().apply {
+    val symbols = remember { mutableStateListOf<LSymbol>() }
+    val newParams = remember { mutableStateListOf<LParameter>().apply {
         baseSpecification.params.forEach { add(it.copy()) }
     } }
 
@@ -269,7 +269,7 @@ fun RulesScreen(
         Row {
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 //TODO choose params
-                LWord.LSymbol.standardSymbols.forEach {
+                SymbolSet.standard.symbols.forEach {
                     DropdownMenuItem(
                         text = {
                             Row {
@@ -278,16 +278,16 @@ fun RulesScreen(
                             }
                         },
                         onClick = {
-                            val parameters = if(it.params == 0) "" else {
+                            val parameters = if(it.nParams == 0) "" else {
                                 StringBuilder().apply {
                                     append("(")
-                                    repeat(it.params - 1) { append(" ,") }
+                                    repeat(it.nParams - 1) { append(" ,") }
                                     append(" )")
                                 }.toString()
                             }
                             val s = " " + it.symbol + parameters + " "
                             editingString.replaceRange(rangeOfCursorIndexOrWord(), s)
-                            editingCursorPos += if(it.params == 0) 2 else 3
+                            editingCursorPos += if(it.nParams == 0) 2 else 3
                             formUnvalidated = true
                         }
                     )
@@ -324,7 +324,7 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun <T : Item> GroupLabeledSection(section : Section,
+    fun <T : Any> GroupLabeledSection(section : Section,
                                        c : KClass<T>,
                                        error : ValidationResult.Failure?,
                                        items : SnapshotStateList<T>,
@@ -362,12 +362,12 @@ fun RulesScreen(
             Button(onClick = {
                 items.add(
                     when(c) {
-                        Parameter::class -> {
+                        LParameter::class -> {
                             val X = 1f
-                            Parameter("", "", TrueConstant(X), X) //todo weird
+                            LParameter("", "", TrueConstant(X), X) //todo weird
                         }
-                        Production::class -> Production(" ", " ")
-                        Symbol::class -> Symbol("A", "Apex")
+                        LProduction::class -> LProduction(" ", " ")
+                        LSymbol::class -> IntermediateSymbol("A", 0,"Apex")
                         else -> throw IllegalStateException("Type?")
                     } as T
                 )
@@ -415,7 +415,7 @@ fun RulesScreen(
         }
         GroupLabeledSection(
             section = RULES,
-            c = Production::class,
+            c = LProduction::class,
             error = errorOverall, //showing system errors here in the middle... for now
             items = productionRules,
             itemName = LocalContext.current.getString(R.string.rules_item_rule),
@@ -430,7 +430,7 @@ fun RulesScreen(
         }
         GroupLabeledSection(
             section = SYMBOLS,
-            c = Symbol::class,
+            c = LSymbol::class,
             error = errorSymbols,
             items = symbols,
             itemName = LocalContext.current.getString(R.string.rules_item_symbol),
@@ -441,7 +441,7 @@ fun RulesScreen(
         }
         GroupLabeledSection(
             section = PARAMS,
-            c = Parameter::class,
+            c = LParameter::class,
             error = errorParams,
             items = newParams,
             itemName = LocalContext.current.getString(R.string.rules_item_param),
