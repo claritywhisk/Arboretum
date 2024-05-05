@@ -13,6 +13,24 @@ object Systems {
         production(" F(x) ", " F(x) [ +(δ) F(x) ] F(x) [ +(-1*δ) ] [ F(x) ] ") //pg 25
     }}
 
+    /*private val page56 by lazy { specify {
+        name("Page 56")
+        param("r₁", 0.9f, "contraction ratio for the trunk", UnitInterval)
+        param("r₂", 0.6f, "contraction ratio for the branches", UnitInterval)
+        param("a₀", 45f, "branching angle from the trunk", AngleAcute)
+        param("a₂", 45f, "branching angle for lateral axes", AngleAcute)
+        param("d", 137.5f, "divergence angle", AngleObtuse)
+        param("wᵣ", 0.707f, "width decrease rate", UnitInterval)
+        constant("l₀", 1f)
+        constant("w₀", 10f)
+        initial("A(l₀,w₀)") //TODO multiple parameters with comma
+        productions(
+            "A(l,w)", "!(w)F(l)[&(a₀)B(l*r₂,w*wᵣ)]/(d)A(l*r₁,w*wᵣ)",
+            "B(l,w)", "!(w)F(l)[-(a₂)\$C(l*r₂,w*w₂)]C(l*r₁,w*w₂)",
+            "C(l,w)", "!(w)F(l)[+(a₂)\$B(l*r₂,w*wᵣ)]B(l*r₁,w*wᵣ)"
+        )
+    }}*/
+
     private val page60 by lazy { specify {
         name("Page 60")
         param("d₁", 94.74f, "divergence angle 1", AngleNonReflex)
