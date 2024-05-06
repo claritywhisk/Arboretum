@@ -31,9 +31,9 @@ sealed interface LSymbol {
             val ls = _standardSymbolLookup[sym]
             fun squawk() : Nothing = throw Error("Error reading L-system from plaintext\nsymbol: $sym(${params.contentToString()}) nparams:${ls?.nParams}}")
             return if (ls != null) {
-                if (BuildConfig.DEBUG) if(params.size != ls.nParams) squawk()
-                if(ls.nParams == 1) ls.objectClass.constructors.first().call(params[0])
-                else ls.objectClass.objectInstance!!
+                //if (BuildConfig.DEBUG) if(params.size != ls.nParams) squawk() //todo revamp all
+                if(params.size == 1) ls.objectClass.constructors.first().call(params[0])
+                else ls.objectClass.objectInstance ?: ls.objectClass.constructors.first().call(Float.NaN) //todo all bollocks
             } else LWord.Apex.also {//TODO reached!
                 if (BuildConfig.DEBUG) squawk()
             }
