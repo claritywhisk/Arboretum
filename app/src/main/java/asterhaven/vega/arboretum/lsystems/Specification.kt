@@ -30,11 +30,10 @@ data class Specification(
         val initialParsed = LList().also {
             val m = SpecificationRegexAndValidation.patWord.matcher(initial.remSpace())
             while (m.find()) {
-                val a = when (val p = m.group(3)) {
-                    null -> Float.NaN
-                    else -> constants[p] ?: p.toFloat() //is it in constants?
+                it += when (val p = m.group(3)) {
+                    null -> LSymbol.parseStandard(m.group(1)!!)
+                    else -> LSymbol.parseStandard(m.group(1)!!, constants[p] ?: p.toFloat()) //is it in constants?
                 }
-                it += LSymbol.parseStandard(m.group(1)!!, a)
             }
         }
         val rules = Array(productions.size) { rI ->
@@ -48,7 +47,7 @@ data class Specification(
                     m.find()
                     val p = m.group(3)
                     if (p != null) onParam(p)
-                    LSymbol.parseStandard(m.group(1)!!, Float.NaN)
+                    LSymbol.parseStandard(m.group(1)!!)
                 }
             }
 
