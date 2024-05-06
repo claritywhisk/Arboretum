@@ -45,6 +45,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
@@ -60,6 +61,7 @@ import asterhaven.vega.arboretum.ui.components.LabeledSection
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import java.lang.IllegalStateException
+import java.util.UUID
 import kotlin.reflect.KClass
 
 @Composable
@@ -96,12 +98,32 @@ fun RulesScreen(
     var errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
-    val NOT_EDITING = -1
-    var editingSection      =  remember { NONE }
-    var editingRow          =  remember { NOT_EDITING }
-    var editingCursorPos    =  remember { NOT_EDITING }
-    var editingString       by remember { mutableStateOf("") }
-    var editingIsInParens           by remember { mutableStateOf(false) }
+    data class EditingState(val section : Section, val row : Int, val element : UUID, val string : String, val cursorPos : Int){
+        fun tryRow() {
+            fun <T> valRes(item : T, vf : Validator.Runner<T>) = when(val result =
+                vf(item)) {
+                is ValidationResult.Success -> null
+                is ValidationResult.Failure -> result
+            }
+            val r = row
+            when(section){
+                AXIOM -> errorAxiom = valRes(axiom, SpecificationRegexAndValidation.validateAxiom)
+                RULES -> errorsProductions[r] = valRes(productionRules[r], SpecificationRegexAndValidation.validateProduction)
+                SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
+                PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
+                else -> {}
+            }
+        }
+        fun rangeOfCursorIndexOrWord() : IntRange {
+            val s = string
+            val c = cursorPos
+            return when (s[c]) {
+                '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
+                else -> c..c
+            }
+        }
+    }
+    var edit by remember { mutableStateOf<EditingState?>(null) }
     var formUnvalidated             by remember { mutableStateOf(false) }
 
     fun tryNewSpecification() {
@@ -123,21 +145,6 @@ fun RulesScreen(
         }
         formUnvalidated = false
     }
-    fun tryRow() {
-        fun <T> valRes(item : T, vf : Validator.Runner<T>) = when(val result =
-            vf(item)) {
-                is ValidationResult.Success -> null
-                is ValidationResult.Failure -> result
-            }
-        val r = editingRow
-        when(editingSection){
-            AXIOM -> errorAxiom = valRes(axiom, SpecificationRegexAndValidation.validateAxiom)
-            RULES -> errorsProductions[r] = valRes(productionRules[r], SpecificationRegexAndValidation.validateProduction)
-            SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
-            PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
-            else -> {}
-        }
-    }
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -148,38 +155,26 @@ fun RulesScreen(
         }
     }
     fun Modifier.consumeClickEvents() = this.consumeClickEventsWhen { true }
-    fun rangeOfCursorIndexOrWord() : IntRange {
-        val s = editingString
-        val c = editingCursorPos
-        return when (s[c]) {
-            '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
-            else -> c..c
-        }
-    }
 
     @Composable
     fun AccursedText(initializingText: String, thisSection : Section, thisRow : Int,
                      modifier: Modifier = Modifier) {
-        var editingThis by remember { mutableStateOf(false) }
+        val uniqueId = remember { UUID.randomUUID() }
         var myText by remember { mutableStateOf(initializingText) }
 
-        fun isInParens() : Boolean {
-            var i = editingCursorPos + 1
+        /*fun isInParens() : Boolean {
+            var i = edit.cursorPos + 1
             while(i in myText.indices) when(myText[i]) {
                 '(' -> return false
                 ')' -> return true
                 else -> i++
             }
             return false
-        }
-        LaunchedEffect(editingCursorPos) {
-            if(editingThis) editingIsInParens = isInParens()
-        }
-        LaunchedEffect(editingRow, editingSection) {
-            if(editingRow == NOT_EDITING || editingSection == NONE) editingThis = false
-        }
-        LaunchedEffect(editingString) {
-            if(editingThis) myText = editingString
+        }*/
+        LaunchedEffect(edit) {
+            edit?.let {
+                if(it.element == uniqueId) myText = it.string
+            }
         }
         ClickableText(
             modifier = modifier.padding(8.dp),
@@ -187,75 +182,77 @@ fun RulesScreen(
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
                 append(myText)
-                if(editingThis) {
-                    val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
-                    val c = editingCursorPos
-                    if (myText[c] == '(') {
-                        addStyle(sStyle, c - 1, c + 1)
-                        val iRightParen = (c..myText.lastIndex)
-                            .first { myText[it] == ')' }
-                        addStyle(sStyle, iRightParen, iRightParen + 1)
-                    } else addStyle(sStyle, c, c + 1)
+                edit?.let { ed ->
+                    if(ed.element == uniqueId){
+                        val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
+                        val c = ed.cursorPos
+                        if (myText[c] == '(') {
+                            addStyle(sStyle, c - 1, c + 1)
+                            val iRightParen = (c..myText.lastIndex)
+                                .first { myText[it] == ')' }
+                            addStyle(sStyle, iRightParen, iRightParen + 1)
+                        } else addStyle(sStyle, c, c + 1)
+                    }
                 }
             }
         ) { clickedI ->
             val text = myText
             val nextI = clickedI + 1
-            editingCursorPos = when {
+            edit = EditingState(thisSection, thisRow, uniqueId, myText, when {
                 //rest on the opening paren of each parametric word
                 nextI <= text.lastIndex && text[nextI] == '(' -> nextI
                 text[clickedI] == ',' -> clickedI - 1
                 text[clickedI] == ')' -> clickedI - 1
                 else -> clickedI
-            }
-            editingRow = thisRow
-            editingSection = thisSection
-            editingString = initializingText
-            editingThis = true
+            })
         }
     }
     @Composable
-    fun EditTray() {
+    fun EditTray(ed : EditingState) {
         //todo depending on section and specific field
         Row(Modifier.consumeClickEvents()) {
-            fun charAtCursor(offset : Int) = editingString[editingCursorPos + offset]
-            IconButton(enabled = editingCursorPos > 0, onClick = {
-                editingCursorPos -= when {
-                    charAtCursor( 0) == '(' -> 2
-                    charAtCursor(-1) == ',' -> 2
-                    else -> 1
-                }
+            fun moveCursor(x : Int) {
+                val new = (ed.cursorPos + x).coerceIn(ed.string.indices)
+                edit = EditingState(ed.section, ed.row, ed.element, ed.string, new)
+            }
+            fun charAtCursor(offset : Int) = ed.string[ed.cursorPos + offset]
+            IconButton(enabled = ed.cursorPos > 0, onClick = {
+                moveCursor(when {
+                    charAtCursor( 0) == '(' -> -2
+                    charAtCursor(-1) == ',' -> -2
+                    else -> -1
+                })
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
-            IconButton(enabled = editingCursorPos < editingString.length, onClick = {
-                editingCursorPos += when {
+            IconButton(enabled = ed.cursorPos < ed.string.length, onClick = {
+                moveCursor(when {
                     charAtCursor(2) == '(' -> 2
                     charAtCursor(1) == ',' -> 2
                     charAtCursor(1) == ')' -> 2
                     else -> 1
-                }
+                })
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
-            IconButton(enabled = editingCursorPos > 0, onClick = {
-                editingString = editingString.removeRange(rangeOfCursorIndexOrWord())
+            IconButton(enabled = ed.cursorPos > 0, onClick = {
+                edit = EditingState(ed.section, ed.row, ed.element, ed.string.removeRange(ed.rangeOfCursorIndexOrWord()), ed.cursorPos) //todo will break
                 formUnvalidated = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
             if(formUnvalidated) TextButton(onClick = {
-                tryRow()
+                ed.tryRow()
                 tryNewSpecification()
             }) {
                 Text(LocalContext.current.getString(R.string.rules_btn_validate))
             }
             else IconButton(onClick = {}) {
-                val errForCurrentRow = when(editingSection){
+                val errForCurrentRow = when(ed.section){
                     AXIOM  -> errorAxiom
-                    RULES  -> errorsProductions[editingRow]
-                    SYMBOLS-> errorsSymbolIndividual[editingRow]
-                    PARAMS -> errorsParamIndividual[editingRow]
+                    RULES  -> errorsProductions[ed.row]
+                    SYMBOLS-> errorsSymbolIndividual[ed.row]
+                    PARAMS -> errorsParamIndividual[ed.row]
                     else   -> null
                 }
                 if (errForCurrentRow == null) {
@@ -286,8 +283,9 @@ fun RulesScreen(
                                 }.toString()
                             }
                             val s = " " + it.symbol + parameters + " "
-                            editingString.replaceRange(rangeOfCursorIndexOrWord(), s)
-                            editingCursorPos += if(it.nParams == 0) 2 else 3
+                            val newStr = ed.string.replaceRange(ed.rangeOfCursorIndexOrWord(), s)
+                            val newCursor = ed.cursorPos + if(it.nParams == 0) 2 else 3
+                            edit = EditingState(ed.section, ed.row, ed.element, newStr, newCursor)
                             formUnvalidated = true
                         }
                     )
@@ -334,7 +332,7 @@ fun RulesScreen(
         var myReorderDeleteButtonsVisible = remember { false }
         if(items.isNotEmpty()) LabeledSection(section.heading, error) {
             items.forEachIndexed { iItem, item ->
-                fun editingMe() = editingSection == section && editingRow == iItem
+                fun editingMe() = edit?.let { it.section == section && it.row == iItem} ?: false
                 CanShowErrorBelow(error = itemErrors[iItem]) {
                     Row(
                         modifier = Modifier
@@ -352,7 +350,7 @@ fun RulesScreen(
                         }
                     }
                 }
-                if (editingMe()) EditTray()
+                if (editingMe()) edit?.let { EditTray(it) }
             }
         }
         //Buttons controlling add, reorder/delete rules
@@ -367,8 +365,7 @@ fun RulesScreen(
                             LParameter("", "", TrueConstant(X), X) //todo weird
                         }
                         LProduction::class -> LProduction(" ", " ")
-                        LSymbol::class -> IntermediateSymbol("A", 0,"Apex")
-                        else -> throw IllegalStateException("Type?")
+                        else -> IntermediateSymbol("A", 0,"Apex")
                     } as T
                 )
                 errorsProductions.add(null)
@@ -394,11 +391,9 @@ fun RulesScreen(
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
-                            tryRow()
+                            edit?.tryRow()
                             tryNewSpecification()
-                            editingCursorPos = NOT_EDITING
-                            editingRow = NOT_EDITING
-                            editingString = ""
+                            edit = null
                         }
                     }
                 }
@@ -408,10 +403,10 @@ fun RulesScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .consumeClickEventsWhen { editingSection == AXIOM }) {
+                    .consumeClickEventsWhen { edit?.let { it.section == AXIOM } ?: false }) {
                 AccursedText(axiom, AXIOM, 0)
             }
-            if (editingSection == AXIOM) EditTray()
+            edit?.let { if(it.section == AXIOM) EditTray(it) }
         }
         GroupLabeledSection(
             section = RULES,
