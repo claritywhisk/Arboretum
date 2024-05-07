@@ -228,24 +228,22 @@ fun RulesScreen(
     @Composable
     fun EditTray() {
         //todo depending on section and specific field
-        fun rangeOfCursorIndexOrWord() : IntRange {
-            val s = editingState().text
-            val c = editingState().cursorPos
-            return when (s[c]) {
-                '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
-                else -> c..c
-            }
+        val es = editingState().text
+        val ec = editingState().cursorPos
+        fun rangeOfCursorIndexOrWord() : IntRange = when (es[ec]) {
+            '(' -> ec - 1..(ec..es.lastIndex).first { es[it] == ')' }
+            else -> ec..ec
         }
         Row(Modifier.consumeClickEvents()) {
             fun moveCursor(x : Int) {
-                val new = (editingState().cursorPos + x).coerceIn(editingState().text.indices)
+                val new = (ec + x).coerceIn(es.indices)
                 editingState().updateCursor(new)
             }
             fun charFromCursor(offset : Int) : Char {
-                val loc = (editingState().cursorPos + offset).coerceIn(editingState().text.indices)
-                return editingState().text[loc]
+                val loc = (ec + offset).coerceIn(es.indices)
+                return es[loc]
             }
-            IconButton(enabled = editingState().cursorPos > 0, onClick = {
+            IconButton(enabled = ec > 0, onClick = {
                 moveCursor(when {
                     charFromCursor( 0) == '(' -> -2
                     charFromCursor(-1) == ',' -> -2
@@ -255,7 +253,7 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
-            IconButton(enabled = editingState().cursorPos < editingState().text.length, onClick = {
+            IconButton(enabled = ec < es.length, onClick = {
                 moveCursor(when {
                     charFromCursor(2) == '(' -> 2
                     charFromCursor(1) == ',' -> 2
@@ -265,8 +263,16 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
-            IconButton(enabled = editingState().cursorPos > 0, onClick = { //todo delete will break
-                editingState().updateText(editingState().text.removeRange(rangeOfCursorIndexOrWord()))
+            IconButton(enabled = ec > 0, onClick = {
+                val range = rangeOfCursorIndexOrWord()
+                val l = range.first.let {
+                    if(it - 1 in es.indices && es[it - 1] == ' ') it - 1 else it
+                }
+                val r = range.last.let {
+                    if(it + 1 in es.indices && es[it + 1] == ' ') it + 1 else it
+                }
+                val new = es.replaceRange(l..r, " ")
+                editingState().updateText(new)
                 formUnvalidated = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
@@ -297,8 +303,8 @@ fun RulesScreen(
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 //TODO choose params
                 fun isInParens() : Boolean {
-                    var i = editingState().cursorPos - 1
-                    while (i in editingState().text.indices) when (editingState().text[i]) {
+                    var i = ec - 1
+                    while (i in es.indices) when (es[i]) {
                         '(' -> return true
                         ')' -> return false
                         else -> i--
@@ -322,8 +328,8 @@ fun RulesScreen(
                                 }.toString()
                             }
                             val s = " " + it.symbol + parameters + " "
-                            editingState().updateText(editingState().text.replaceRange(rangeOfCursorIndexOrWord(), s))
-                            editingState().updateCursor(editingState().cursorPos + if(it.nParams == 0) 2 else 3)
+                            editingState().updateText(es.replaceRange(rangeOfCursorIndexOrWord(), s))
+                            editingState().updateCursor(ec + if(it.nParams == 0) 2 else 3)
                             formUnvalidated = true
                         }
                     )
