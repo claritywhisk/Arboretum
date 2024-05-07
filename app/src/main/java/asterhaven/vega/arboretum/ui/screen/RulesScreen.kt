@@ -209,14 +209,15 @@ fun RulesScreen(
                 }
             }
         ) { clickedI ->
+            val ci = clickedI.coerceIn(text.indices) //todo explain why needed, delete smth click end
             val nextI = (clickedI + 1).coerceIn(text.indices)
             elementBeingEdited = uid
             editingState().updateCursor(when {
                 //rest on the opening paren of each parametric word
                 text[nextI] == '(' -> nextI
-                text[clickedI] == ',' -> clickedI - 1
-                text[clickedI] == ')' -> clickedI - 1
-                else -> clickedI
+                text[ci] == ',' -> ci - 1
+                text[ci] == ')' -> ci - 1
+                else -> ci
             }.coerceIn(text.indices))
         }
     }
