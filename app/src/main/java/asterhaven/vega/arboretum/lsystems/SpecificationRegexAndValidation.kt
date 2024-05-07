@@ -1,10 +1,13 @@
 package asterhaven.vega.arboretum.lsystems
 
 import asterhaven.vega.arboretum.lsystems.validation.accessors.*
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import dev.nesk.akkurate.accessors.each
 import dev.nesk.akkurate.constraints.builders.isMatching
+import dev.nesk.akkurate.constraints.builders.isNotBlank
+import dev.nesk.akkurate.constraints.builders.isNotEmpty
 import dev.nesk.akkurate.constraints.constrain
 import dev.nesk.akkurate.constraints.otherwise
 import dev.nesk.akkurate.validatables.and
@@ -15,7 +18,7 @@ object SpecificationRegexAndValidation {
     private const val rgxLWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
     val patWord by lazy { Pattern.compile(rgxLWord) }
 
-    private const val validRawSentence = " ($rgxLWord )+"
+    private const val validRawSentence = " ($rgxLWord )*"
     private val rgxValidRawSentence = Regex(validRawSentence)
 
     val validateSpecification by lazy {
@@ -41,9 +44,40 @@ object SpecificationRegexAndValidation {
         }
     }
 
+    val rgxMsg : () -> String = {
+        FirebaseCrashlytics.getInstance().log("Unexpected non-matching of regex")
+        "Not a valid arrangement of words"
+    }
+    val bracketMsg : () -> String = {
+        "Brackets [] are not paired"
+    }
+    fun bracketsMatch(s : String) : Boolean {
+        var l = 0
+        for(c in s) when(c){
+            '[' -> l++
+            ']' -> if(l-- == 0) return false
+            else -> {}
+        }
+        return l == 0
+    }
+
     val validateAxiom by lazy {
         Validator<String> {
-            isMatching(rgxValidRawSentence)
+            isNotEmpty()
+            isNotBlank()
+            constrain { bracketsMatch(this.unwrap()) } otherwise bracketMsg
+            isMatching(rgxValidRawSentence) otherwise rgxMsg
+        }
+    }
+
+    val validateProduction by lazy {
+        Validator<LProduction> {
+            (before and after){
+                isNotEmpty()
+                isNotBlank()
+                constrain { bracketsMatch(this.unwrap()) } otherwise bracketMsg
+                isMatching(rgxValidRawSentence) otherwise rgxMsg
+            }
         }
     }
 
@@ -58,14 +92,6 @@ object SpecificationRegexAndValidation {
         Validator<LParameter> {
             constrain { type.unwrap().range.contains(initialValue.unwrap()) } otherwise {
                 "Parameter value outside of provided range."
-            }
-        }
-    }
-
-    val validateProduction by lazy {
-        Validator<LProduction> {
-            (before and after){
-                isMatching(rgxValidRawSentence)
             }
         }
     }
