@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
@@ -49,11 +50,13 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
+import asterhaven.vega.arboretum.lsystems.CustomSymbol
 import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.LProduction
 import asterhaven.vega.arboretum.lsystems.LSymbol
+import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
 import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.ui.ArboretumScreen
@@ -67,11 +70,27 @@ import kotlin.reflect.KClass
 enum class Section {
     NONE, AXIOM, RULES, SYMBOLS, PARAMS
 }
-
-private class MutableProduction(before : String, after : String) {
+sealed interface RItem
+private class MutableProduction(before : String, after : String) : RItem {
     val before = mutableStateOf(before)
     val after = mutableStateOf(after)
     fun make() : LProduction = LProduction(before.value, after.value)
+}
+private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String?) : RItem {
+    val symbol = mutableStateOf(sym)
+    val nParams = mutableIntStateOf(np)
+    val desc = mutableStateOf(desc)
+    val aliases = mutableStateOf(aliasFor)
+    fun make() : LSymbol =
+        if(aliases.value == null) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
+        else CustomSymbol(symbol.value, nParams.intValue, desc.value, aliases.value!!)
+}
+private class MutableParam(sym: String, name: String, type: ParameterType, initialValue: Float) : RItem {
+    val symbol = mutableStateOf(sym)
+    val name = mutableStateOf(name)
+    val type = mutableStateOf(type)
+    val initialValue = mutableFloatStateOf(initialValue)
+    fun make() : LParameter = LParameter(symbol.value, name.value, type.value, initialValue.floatValue)
 }
 
 @Composable
@@ -81,7 +100,7 @@ fun RulesScreen(
     leavingScreen : ArboretumScreen?
 ) {
     val heading = HashMap<Section, String>()
-    heading[Section.NONE] = " "
+    heading[Section.NONE] = ""
     heading[Section.AXIOM] = LocalContext.current.getString(R.string.rules_label_axiom)
     heading[Section.RULES] = LocalContext.current.getString(R.string.rules_label_productions)
     heading[Section.SYMBOLS] = LocalContext.current.getString(R.string.rules_label_custom_symbols)
@@ -91,21 +110,23 @@ fun RulesScreen(
     val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
         baseSpecification.productions.forEach { add(MutableProduction(it.before, it.after)) }
     } }
-    val symbols = remember { mutableStateListOf<LSymbol>() } //todo adapter for edit LX
-    val newParams = remember { mutableStateListOf<LParameter>().apply {
-        baseSpecification.params.forEach { add(it.copy()) }
+    val symbols = remember { mutableStateListOf<MutableSymbol>() }
+    val newParams = remember { mutableStateListOf<MutableParam>().apply {
+        baseSpecification.params.forEach { add(MutableParam(it.symbol, it.name, it.type, it.initialValue)) }
     } }
+
+    var formUnvalidated by remember { mutableStateOf(false) }
 
     fun errOK() = mutableStateOf<ValidationResult.Failure?>(null)
     fun errsOK(k : Int) = mutableStateListOf<ValidationResult.Failure?>().apply{
         repeat(k) { add(null) }
     }
     var errorAxiom              by remember { errOK() }
-    var errorsProductions       = remember { errsOK(productionRules.size) }
+    val errorsProductions       = remember { errsOK(productionRules.size) }
     var errorOverall            by remember { errOK() }
-    var errorsSymbolIndividual  = remember { errsOK(symbols.size) }
+    val errorsSymbolIndividual  = remember { errsOK(symbols.size) }
     var errorSymbols            by remember { errOK() }
-    var errorsParamIndividual   = remember { errsOK(newParams.size) }
+    val errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
     class Holder(text : MutableState<String>, val section : Section, val row : Int) {
@@ -121,18 +142,16 @@ fun RulesScreen(
         }
     val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), Section.NONE, -1) }
     var elementBeingEdited by remember { mutableIntStateOf(idNotEditing) }
-    fun editingState() : Holder = state[elementBeingEdited]!! //use this by preference
-
-    var formUnvalidated             by remember { mutableStateOf(false) }
+    fun editingState() : Holder = state[elementBeingEdited]!!
 
     fun tryNewSpecification() {
         val newSpecification = Specification(
             name ="todo",
             initial = axiom.value,
             productions = productionRules.toList().map { it.make() } ,
-            params = newParams.toList(),
+            params = newParams.toList().map { it.make() },
             constants = HashMap<String, Float>().apply {
-                newParams.forEach { p -> this[p.symbol] = p.initialValue }
+                newParams.map { it.make() }.forEach { p -> this[p.symbol] = p.initialValue }
             }
         )
         when(val result = SpecificationRegexAndValidation.validateSpecification(newSpecification)){
@@ -154,12 +173,11 @@ fun RulesScreen(
         when(editingState().section){
             Section.AXIOM -> errorAxiom = valRes(axiom.value, SpecificationRegexAndValidation.validateAxiom)
             Section.RULES -> errorsProductions[r] = valRes(productionRules[r].make(), SpecificationRegexAndValidation.validateProduction)
-            Section.SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
-            Section.PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
+            Section.SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r].make(), SpecificationRegexAndValidation.validateSymbol)
+            Section.PARAMS -> errorsParamIndividual[r] = valRes(newParams[r].make(), SpecificationRegexAndValidation.validateParameter)
             else -> {}
         }
     }
-
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -209,7 +227,6 @@ fun RulesScreen(
     }
     @Composable
     fun EditTray() {
-        println("edit tray") //todo
         //todo depending on section and specific field
         fun rangeOfCursorIndexOrWord() : IntRange {
             val s = editingState().text
@@ -224,12 +241,15 @@ fun RulesScreen(
                 val new = (editingState().cursorPos + x).coerceIn(editingState().text.indices)
                 editingState().updateCursor(new)
             }
-            fun charAtCursor(offset : Int) = editingState().text[editingState().cursorPos + offset]
+            fun charFromCursor(offset : Int) : Char {
+                val loc = (editingState().cursorPos + offset).coerceIn(editingState().text.indices)
+                return editingState().text[loc]
+            }
             IconButton(enabled = editingState().cursorPos > 0, onClick = {
                 moveCursor(when {
-                    charAtCursor( 0) == '(' -> -2
-                    charAtCursor(-1) == ',' -> -2
-                    charAtCursor(-1) == ')' -> -2
+                    charFromCursor( 0) == '(' -> -2
+                    charFromCursor(-1) == ',' -> -2
+                    charFromCursor(-1) == ')' -> -2
                     else -> -1
                 })
             }) {
@@ -237,9 +257,9 @@ fun RulesScreen(
             }
             IconButton(enabled = editingState().cursorPos < editingState().text.length, onClick = {
                 moveCursor(when {
-                    charAtCursor(2) == '(' -> 2
-                    charAtCursor(1) == ',' -> 2
-                    charAtCursor(1) == ')' -> 2
+                    charFromCursor(2) == '(' -> 2
+                    charFromCursor(1) == ',' -> 2
+                    charFromCursor(1) == ')' -> 2
                     else -> 1
                 })
             }) {
@@ -340,13 +360,13 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun <T : Any> GroupLabeledSection(section : Section,
-                                       c : KClass<T>,
-                                       error : ValidationResult.Failure?,
-                                       items : SnapshotStateList<T>,
-                                       itemName : String,
-                                       itemErrors : SnapshotStateList<ValidationResult.Failure?>,
-                                       itemContent: @Composable (Int, T) -> Unit) {
+    fun <T : RItem> GroupLabeledSection(section : Section,
+                                        c : KClass<T>,
+                                        error : ValidationResult.Failure?,
+                                        items : SnapshotStateList<T>,
+                                        itemName : String,
+                                        itemErrors : SnapshotStateList<ValidationResult.Failure?>,
+                                        itemContent: @Composable (Int, T) -> Unit) {
         var myReorderDeleteButtonsVisible = remember { false }
         if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
@@ -371,10 +391,6 @@ fun RulesScreen(
                         }
                     }
                 }
-                println("edSr ${editingState().row} edSs ${editingState().section}") //todo
-                println("iItm ${iItem} sect ${section}")
-                println(" " + editingState().section + "   " + section)
-                println((editingState().section == section))
                 if(editingState().row == iItem && editingState().section == section) EditTray()
             }
         }
@@ -385,12 +401,12 @@ fun RulesScreen(
             Button(onClick = {
                 items.add(
                     when(c) {
-                        LParameter::class -> {
-                            val X = 1f
-                            LParameter("", "", TrueConstant(X), X) //todo weird
+                        MutableProduction::class -> MutableProduction(" ", " ")
+                        MutableSymbol::class -> MutableSymbol("A", 0,"Apex", null)
+                        else -> {
+                            val x = 1f
+                            MutableParam("", "", TrueConstant(x), x) //todo weird
                         }
-                        LProduction::class -> LProduction(" ", " ")
-                        else -> IntermediateSymbol("A", 0,"Apex")
                     } as T
                 )
                 errorsProductions.add(null)
@@ -451,7 +467,7 @@ fun RulesScreen(
         }
         GroupLabeledSection(
             section = Section.SYMBOLS,
-            c = LSymbol::class,
+            c = MutableSymbol::class,
             error = errorSymbols,
             items = symbols,
             itemName = LocalContext.current.getString(R.string.rules_item_symbol),
@@ -462,7 +478,7 @@ fun RulesScreen(
         }
         GroupLabeledSection(
             section = Section.PARAMS,
-            c = LParameter::class,
+            c = MutableParam::class,
             error = errorParams,
             items = newParams,
             itemName = LocalContext.current.getString(R.string.rules_item_param),
