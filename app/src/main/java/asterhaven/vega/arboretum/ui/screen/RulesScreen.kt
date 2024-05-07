@@ -64,6 +64,10 @@ import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import kotlin.reflect.KClass
 
+enum class Section {
+    NONE, AXIOM, RULES, SYMBOLS, PARAMS
+}
+
 private class MutableProduction(before : String, after : String) {
     val before = mutableStateOf(before)
     val after = mutableStateOf(after)
@@ -76,12 +80,12 @@ fun RulesScreen(
     updateSpecification: (Specification) -> Unit,
     leavingScreen : ArboretumScreen?
 ) {
-    class Section(val heading : String)
-    val NONE = Section("")
-    val AXIOM = Section(LocalContext.current.getString(R.string.rules_label_axiom))
-    val RULES = Section(LocalContext.current.getString(R.string.rules_label_productions))
-    val SYMBOLS = Section(LocalContext.current.getString(R.string.rules_label_custom_symbols))
-    val PARAMS = Section(LocalContext.current.getString(R.string.rules_label_parameters))
+    val heading = HashMap<Section, String>()
+    heading[Section.NONE] = " "
+    heading[Section.AXIOM] = LocalContext.current.getString(R.string.rules_label_axiom)
+    heading[Section.RULES] = LocalContext.current.getString(R.string.rules_label_productions)
+    heading[Section.SYMBOLS] = LocalContext.current.getString(R.string.rules_label_custom_symbols)
+    heading[Section.PARAMS] = LocalContext.current.getString(R.string.rules_label_parameters)
 
     val axiom = remember { mutableStateOf(baseSpecification.initial) }
     val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
@@ -115,7 +119,7 @@ fun RulesScreen(
         = UniqueIdGenerator.nextId().also {
             state[it] = Holder(text, section, row)
         }
-    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), NONE, -1) } //todo unique tags
+    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), Section.NONE, -1) }
     var elementBeingEdited by remember { mutableIntStateOf(idNotEditing) }
     fun editingState() : Holder = state[elementBeingEdited]!! //use this by preference
 
@@ -148,10 +152,10 @@ fun RulesScreen(
         }
         val r = editingState().row
         when(editingState().section){
-            AXIOM -> errorAxiom = valRes(axiom.value, SpecificationRegexAndValidation.validateAxiom)
-            RULES -> errorsProductions[r] = valRes(productionRules[r].make(), SpecificationRegexAndValidation.validateProduction)
-            SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
-            PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
+            Section.AXIOM -> errorAxiom = valRes(axiom.value, SpecificationRegexAndValidation.validateAxiom)
+            Section.RULES -> errorsProductions[r] = valRes(productionRules[r].make(), SpecificationRegexAndValidation.validateProduction)
+            Section.SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
+            Section.PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
             else -> {}
         }
     }
@@ -203,9 +207,9 @@ fun RulesScreen(
         val uid = remember { nextUIDPairedToHolder(mainValue, section, row) }
         AccursedText(uid, modifier)
     }
-
     @Composable
     fun EditTray() {
+        println("edit tray") //todo
         //todo depending on section and specific field
         fun rangeOfCursorIndexOrWord() : IntRange {
             val s = editingState().text
@@ -255,10 +259,10 @@ fun RulesScreen(
             }
             else IconButton(onClick = {}) {
                 val errForCurrentRow = when(editingState().section){
-                    AXIOM  -> errorAxiom
-                    RULES  -> errorsProductions[editingState().row]
-                    SYMBOLS-> errorsSymbolIndividual[editingState().row]
-                    PARAMS -> errorsParamIndividual[editingState().row]
+                    Section.AXIOM  -> errorAxiom
+                    Section.RULES  -> errorsProductions[editingState().row]
+                    Section.SYMBOLS-> errorsSymbolIndividual[editingState().row]
+                    Section.PARAMS -> errorsParamIndividual[editingState().row]
                     else   -> null
                 }
                 if (errForCurrentRow == null) {
@@ -344,7 +348,7 @@ fun RulesScreen(
                                        itemErrors : SnapshotStateList<ValidationResult.Failure?>,
                                        itemContent: @Composable (Int, T) -> Unit) {
         var myReorderDeleteButtonsVisible = remember { false }
-        if(items.isNotEmpty()) LabeledSection(section.heading, error) {
+        if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
                 CanShowErrorBelow(error = itemErrors[iItem]) {
                     Row(
@@ -367,7 +371,11 @@ fun RulesScreen(
                         }
                     }
                 }
-                if(editingState().section == section) EditTray()
+                println("edSr ${editingState().row} edSs ${editingState().section}") //todo
+                println("iItm ${iItem} sect ${section}")
+                println(" " + editingState().section + "   " + section)
+                println((editingState().section == section))
+                if(editingState().row == iItem && editingState().section == section) EditTray()
             }
         }
         //Buttons controlling add, reorder/delete rules
@@ -417,17 +425,17 @@ fun RulesScreen(
             }
     ) {
         LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom), errorAxiom) {
-            val editingAxiom = editingState().section == AXIOM
+            val editingAxiom = editingState().section == Section.AXIOM
             Row(
                 Modifier
                     .fillMaxWidth()
                     .consumeClickEventsWhen { editingAxiom }) {
-                AccursedTextWrapper(axiom, AXIOM, 0)
+                AccursedTextWrapper(axiom, Section.AXIOM, 0)
             }
             if(editingAxiom) EditTray()
         }
         GroupLabeledSection(
-            section = RULES,
+            section = Section.RULES,
             c = MutableProduction::class,
             error = errorOverall, //showing system errors here in the middle... for now
             items = productionRules,
@@ -435,14 +443,14 @@ fun RulesScreen(
             itemErrors = errorsProductions
         ) {
             iRule, pr ->
-            AccursedTextWrapper(pr.before, RULES, iRule)
+            AccursedTextWrapper(pr.before, Section.RULES, iRule)
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-            AccursedTextWrapper(pr.after, RULES, iRule, Modifier
+            AccursedTextWrapper(pr.after, Section.RULES, iRule, Modifier
                 .weight(1f)
                 .width(IntrinsicSize.Max))
         }
         GroupLabeledSection(
-            section = SYMBOLS,
+            section = Section.SYMBOLS,
             c = LSymbol::class,
             error = errorSymbols,
             items = symbols,
@@ -453,7 +461,7 @@ fun RulesScreen(
             //todo
         }
         GroupLabeledSection(
-            section = PARAMS,
+            section = Section.PARAMS,
             c = LParameter::class,
             error = errorParams,
             items = newParams,
