@@ -30,7 +30,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,7 +47,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
-import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
@@ -58,11 +59,16 @@ import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.ui.ArboretumScreen
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
+import asterhaven.vega.arboretum.ui.components.UniqueIdGenerator
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
-import java.lang.IllegalStateException
-import java.util.UUID
 import kotlin.reflect.KClass
+
+private class MutableProduction(before : String, after : String) {
+    val before = mutableStateOf(before)
+    val after = mutableStateOf(after)
+    fun make() : LProduction = LProduction(before.value, after.value)
+}
 
 @Composable
 fun RulesScreen(
@@ -77,11 +83,11 @@ fun RulesScreen(
     val SYMBOLS = Section(LocalContext.current.getString(R.string.rules_label_custom_symbols))
     val PARAMS = Section(LocalContext.current.getString(R.string.rules_label_parameters))
 
-    val axiom by remember { mutableStateOf(baseSpecification.initial) }
-    val productionRules = remember { mutableStateListOf<LProduction>().apply {
-        baseSpecification.productions.forEach { add(it.copy()) }
+    val axiom = remember { mutableStateOf(baseSpecification.initial) }
+    val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
+        baseSpecification.productions.forEach { add(MutableProduction(it.before, it.after)) }
     } }
-    val symbols = remember { mutableStateListOf<LSymbol>() }
+    val symbols = remember { mutableStateListOf<LSymbol>() } //todo adapter for edit LX
     val newParams = remember { mutableStateListOf<LParameter>().apply {
         baseSpecification.params.forEach { add(it.copy()) }
     } }
@@ -98,39 +104,28 @@ fun RulesScreen(
     var errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
-    data class EditingState(val section : Section, val row : Int, val element : UUID, val string : String, val cursorPos : Int){
-        fun tryRow() {
-            fun <T> valRes(item : T, vf : Validator.Runner<T>) = when(val result =
-                vf(item)) {
-                is ValidationResult.Success -> null
-                is ValidationResult.Failure -> result
-            }
-            val r = row
-            when(section){
-                AXIOM -> errorAxiom = valRes(axiom, SpecificationRegexAndValidation.validateAxiom)
-                RULES -> errorsProductions[r] = valRes(productionRules[r], SpecificationRegexAndValidation.validateProduction)
-                SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
-                PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
-                else -> {}
-            }
-        }
-        fun rangeOfCursorIndexOrWord() : IntRange {
-            val s = string
-            val c = cursorPos
-            return when (s[c]) {
-                '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
-                else -> c..c
-            }
-        }
+    class Holder(text : MutableState<String>, val section : Section, val row : Int) {
+        val text by text
+        var cursorPos by mutableIntStateOf(0)
+        val updateText = { new : String -> text.value = new }
+        val updateCursor : (Int) -> Unit = { new : Int -> cursorPos = new }
     }
-    var edit by remember { mutableStateOf<EditingState?>(null) }
+    val state : HashMap<Int, Holder> = remember { HashMap() }
+    fun nextUIDPairedToHolder(text : MutableState<String>, section : Section, row : Int) : Int
+        = UniqueIdGenerator.nextId().also {
+            state[it] = Holder(text, section, row)
+        }
+    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), NONE, -1) } //todo unique tags
+    var elementBeingEdited by remember { mutableIntStateOf(idNotEditing) }
+    fun editingState() : Holder = state[elementBeingEdited]!! //use this by preference
+
     var formUnvalidated             by remember { mutableStateOf(false) }
 
     fun tryNewSpecification() {
         val newSpecification = Specification(
             name ="todo",
-            initial = axiom,
-            productions = productionRules.toList(),
+            initial = axiom.value,
+            productions = productionRules.toList().map { it.make() } ,
             params = newParams.toList(),
             constants = HashMap<String, Float>().apply {
                 newParams.forEach { p -> this[p.symbol] = p.initialValue }
@@ -145,6 +140,22 @@ fun RulesScreen(
         }
         formUnvalidated = false
     }
+    fun tryRow() {
+        fun <T> valRes(item : T, vf : Validator.Runner<T>) = when(val result =
+            vf(item)) {
+            is ValidationResult.Success -> null
+            is ValidationResult.Failure -> result
+        }
+        val r = editingState().row
+        when(editingState().section){
+            AXIOM -> errorAxiom = valRes(axiom.value, SpecificationRegexAndValidation.validateAxiom)
+            RULES -> errorsProductions[r] = valRes(productionRules[r].make(), SpecificationRegexAndValidation.validateProduction)
+            SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r], SpecificationRegexAndValidation.validateSymbol)
+            PARAMS -> errorsParamIndividual[r] = valRes(newParams[r], SpecificationRegexAndValidation.validateParameter)
+            else -> {}
+        }
+    }
+
 
     fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
         awaitPointerEventScope {
@@ -157,48 +168,28 @@ fun RulesScreen(
     fun Modifier.consumeClickEvents() = this.consumeClickEventsWhen { true }
 
     @Composable
-    fun AccursedText(initializingText: String, thisSection : Section, thisRow : Int,
-                     modifier: Modifier = Modifier) {
-        val uniqueId = remember { UUID.randomUUID() }
-        var myText by remember { mutableStateOf(initializingText) }
-
-        /*fun isInParens() : Boolean {
-            var i = edit.cursorPos + 1
-            while(i in myText.indices) when(myText[i]) {
-                '(' -> return false
-                ')' -> return true
-                else -> i++
-            }
-            return false
-        }*/
-        LaunchedEffect(edit) {
-            edit?.let {
-                if(it.element == uniqueId) myText = it.string
-            }
-        }
+    fun AccursedText(uid : Int, modifier: Modifier) {
+        val text = state[uid]!!.text
         ClickableText(
             modifier = modifier.padding(8.dp),
             style = TextStyle(color = MaterialTheme.colorScheme.onBackground),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
-                append(myText)
-                edit?.let { ed ->
-                    if(ed.element == uniqueId){
-                        val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
-                        val c = ed.cursorPos
-                        if (myText[c] == '(') {
-                            addStyle(sStyle, c - 1, c + 1)
-                            val iRightParen = (c..myText.lastIndex)
-                                .first { myText[it] == ')' }
-                            addStyle(sStyle, iRightParen, iRightParen + 1)
-                        } else addStyle(sStyle, c, c + 1)
-                    }
+                append(text)
+                if(elementBeingEdited == uid){
+                    val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
+                    val c = editingState().cursorPos
+                    if (text[c] == '(') {
+                        addStyle(sStyle, c - 1, c + 1)
+                        val iRightParen = (c..text.lastIndex).first { text[it] == ')' }
+                        addStyle(sStyle, iRightParen, iRightParen + 1)
+                    } else addStyle(sStyle, c, c + 1)
                 }
             }
         ) { clickedI ->
-            val text = myText
             val nextI = clickedI + 1
-            edit = EditingState(thisSection, thisRow, uniqueId, myText, when {
+            elementBeingEdited = uid
+            editingState().updateCursor(when {
                 //rest on the opening paren of each parametric word
                 nextI <= text.lastIndex && text[nextI] == '(' -> nextI
                 text[clickedI] == ',' -> clickedI - 1
@@ -208,24 +199,39 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun EditTray(ed : EditingState) {
+    fun AccursedTextWrapper(mainValue : MutableState<String>, section : Section, row : Int, modifier: Modifier = Modifier) {
+        val uid = remember { nextUIDPairedToHolder(mainValue, section, row) }
+        AccursedText(uid, modifier)
+    }
+
+    @Composable
+    fun EditTray() {
         //todo depending on section and specific field
+        fun rangeOfCursorIndexOrWord() : IntRange {
+            val s = editingState().text
+            val c = editingState().cursorPos
+            return when (s[c]) {
+                '(' -> c - 1..(c..s.lastIndex).first { s[it] == ')' }
+                else -> c..c
+            }
+        }
         Row(Modifier.consumeClickEvents()) {
             fun moveCursor(x : Int) {
-                val new = (ed.cursorPos + x).coerceIn(ed.string.indices)
-                edit = EditingState(ed.section, ed.row, ed.element, ed.string, new)
+                val new = (editingState().cursorPos + x).coerceIn(editingState().text.indices)
+                editingState().updateCursor(new)
             }
-            fun charAtCursor(offset : Int) = ed.string[ed.cursorPos + offset]
-            IconButton(enabled = ed.cursorPos > 0, onClick = {
+            fun charAtCursor(offset : Int) = editingState().text[editingState().cursorPos + offset]
+            IconButton(enabled = editingState().cursorPos > 0, onClick = {
                 moveCursor(when {
                     charAtCursor( 0) == '(' -> -2
                     charAtCursor(-1) == ',' -> -2
+                    charAtCursor(-1) == ')' -> -2
                     else -> -1
                 })
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
-            IconButton(enabled = ed.cursorPos < ed.string.length, onClick = {
+            IconButton(enabled = editingState().cursorPos < editingState().text.length, onClick = {
                 moveCursor(when {
                     charAtCursor(2) == '(' -> 2
                     charAtCursor(1) == ',' -> 2
@@ -235,24 +241,24 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
-            IconButton(enabled = ed.cursorPos > 0, onClick = {
-                edit = EditingState(ed.section, ed.row, ed.element, ed.string.removeRange(ed.rangeOfCursorIndexOrWord()), ed.cursorPos) //todo will break
+            IconButton(enabled = editingState().cursorPos > 0, onClick = { //todo delete will break
+                editingState().updateText(editingState().text.removeRange(rangeOfCursorIndexOrWord()))
                 formUnvalidated = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
             }
             if(formUnvalidated) TextButton(onClick = {
-                ed.tryRow()
+                tryRow()
                 tryNewSpecification()
             }) {
                 Text(LocalContext.current.getString(R.string.rules_btn_validate))
             }
             else IconButton(onClick = {}) {
-                val errForCurrentRow = when(ed.section){
+                val errForCurrentRow = when(editingState().section){
                     AXIOM  -> errorAxiom
-                    RULES  -> errorsProductions[ed.row]
-                    SYMBOLS-> errorsSymbolIndividual[ed.row]
-                    PARAMS -> errorsParamIndividual[ed.row]
+                    RULES  -> errorsProductions[editingState().row]
+                    SYMBOLS-> errorsSymbolIndividual[editingState().row]
+                    PARAMS -> errorsParamIndividual[editingState().row]
                     else   -> null
                 }
                 if (errForCurrentRow == null) {
@@ -266,7 +272,16 @@ fun RulesScreen(
         Row {
             Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 //TODO choose params
-                SymbolSet.standard.symbols.forEach {
+                fun isInParens() : Boolean {
+                    var i = editingState().cursorPos - 1
+                    while (i in editingState().text.indices) when (editingState().text[i]) {
+                        '(' -> return true
+                        ')' -> return false
+                        else -> i--
+                    }
+                    return false
+                }
+                if(!isInParens()) SymbolSet.standard.symbols.forEach {
                     DropdownMenuItem(
                         text = {
                             Row {
@@ -283,9 +298,8 @@ fun RulesScreen(
                                 }.toString()
                             }
                             val s = " " + it.symbol + parameters + " "
-                            val newStr = ed.string.replaceRange(ed.rangeOfCursorIndexOrWord(), s)
-                            val newCursor = ed.cursorPos + if(it.nParams == 0) 2 else 3
-                            edit = EditingState(ed.section, ed.row, ed.element, newStr, newCursor)
+                            editingState().updateText(editingState().text.replaceRange(rangeOfCursorIndexOrWord(), s))
+                            editingState().updateCursor(editingState().cursorPos + if(it.nParams == 0) 2 else 3)
                             formUnvalidated = true
                         }
                     )
@@ -314,8 +328,8 @@ fun RulesScreen(
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move $itemDescription Down")
         }
         IconButton(onClick = {
-            productionRules.removeAt(i)
-            errorsProductions.removeAt(i)
+            items.removeAt(i)
+            errs.removeAt(i)
             formUnvalidated = true
         }) {
             Icon(Icons.Default.Delete, contentDescription = "Delete $itemDescription")
@@ -332,13 +346,16 @@ fun RulesScreen(
         var myReorderDeleteButtonsVisible = remember { false }
         if(items.isNotEmpty()) LabeledSection(section.heading, error) {
             items.forEachIndexed { iItem, item ->
-                fun editingMe() = edit?.let { it.section == section && it.row == iItem} ?: false
                 CanShowErrorBelow(error = itemErrors[iItem]) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .consumeClickEventsWhen { editingMe() },
-                        verticalAlignment = Alignment.CenterVertically
+                            .consumeClickEventsWhen {
+                                editingState().let {
+                                    it.section == section && it.row == iItem
+                                }
+                            },
+                            verticalAlignment = Alignment.CenterVertically
                     ) {
                         //CONTENT
                         itemContent(iItem, item)
@@ -350,7 +367,7 @@ fun RulesScreen(
                         }
                     }
                 }
-                if (editingMe()) edit?.let { EditTray(it) }
+                if(editingState().section == section) EditTray()
             }
         }
         //Buttons controlling add, reorder/delete rules
@@ -391,35 +408,36 @@ fun RulesScreen(
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
-                            edit?.tryRow()
+                            tryRow()
                             tryNewSpecification()
-                            edit = null
+                            elementBeingEdited = idNotEditing
                         }
                     }
                 }
             }
     ) {
         LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom), errorAxiom) {
+            val editingAxiom = editingState().section == AXIOM
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .consumeClickEventsWhen { edit?.let { it.section == AXIOM } ?: false }) {
-                AccursedText(axiom, AXIOM, 0)
+                    .consumeClickEventsWhen { editingAxiom }) {
+                AccursedTextWrapper(axiom, AXIOM, 0)
             }
-            edit?.let { if(it.section == AXIOM) EditTray(it) }
+            if(editingAxiom) EditTray()
         }
         GroupLabeledSection(
             section = RULES,
-            c = LProduction::class,
+            c = MutableProduction::class,
             error = errorOverall, //showing system errors here in the middle... for now
             items = productionRules,
             itemName = LocalContext.current.getString(R.string.rules_item_rule),
             itemErrors = errorsProductions
         ) {
             iRule, pr ->
-            AccursedText(pr.before, RULES, iRule)
+            AccursedTextWrapper(pr.before, RULES, iRule)
             Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-            AccursedText(pr.after, RULES, iRule, Modifier
+            AccursedTextWrapper(pr.after, RULES, iRule, Modifier
                 .weight(1f)
                 .width(IntrinsicSize.Max))
         }

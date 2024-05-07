@@ -92,3 +92,10 @@ fun CanShowErrorBelow(error: ValidationResult.Failure?, content: @Composable () 
     }
 }
 
+object UniqueIdGenerator {
+    private var idCounter = 0
+    fun nextId(): Int {
+        return idCounter++
+    }
+}
+
