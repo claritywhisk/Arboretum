@@ -209,15 +209,15 @@ fun RulesScreen(
                 }
             }
         ) { clickedI ->
-            val nextI = clickedI + 1
+            val nextI = (clickedI + 1).coerceIn(text.indices)
             elementBeingEdited = uid
             editingState().updateCursor(when {
                 //rest on the opening paren of each parametric word
-                nextI <= text.lastIndex && text[nextI] == '(' -> nextI
+                text[nextI] == '(' -> nextI
                 text[clickedI] == ',' -> clickedI - 1
                 text[clickedI] == ')' -> clickedI - 1
                 else -> clickedI
-            })
+            }.coerceIn(text.indices))
         }
     }
     @Composable
@@ -253,7 +253,7 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
-            IconButton(enabled = ec < es.length, onClick = {
+            IconButton(enabled = ec < es.lastIndex, onClick = {
                 moveCursor(when {
                     charFromCursor(2) == '(' -> 2
                     charFromCursor(1) == ',' -> 2
@@ -263,7 +263,7 @@ fun RulesScreen(
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
-            IconButton(enabled = ec > 0, onClick = {
+            IconButton(enabled = es[ec] != ' ', onClick = {
                 val range = rangeOfCursorIndexOrWord()
                 val l = range.first.let {
                     if(it - 1 in es.indices && es[it - 1] == ' ') it - 1 else it
@@ -272,6 +272,7 @@ fun RulesScreen(
                     if(it + 1 in es.indices && es[it + 1] == ' ') it + 1 else it
                 }
                 val new = es.replaceRange(l..r, " ")
+                editingState().updateCursor(l)
                 editingState().updateText(new)
                 formUnvalidated = true
             }) {
