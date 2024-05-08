@@ -28,10 +28,10 @@ object SpecificationRegexAndValidation {
             }
             productions.each { constrain {
                 validateProduction(it) is ValidationResult.Success
-            }}
+            } otherwise {"Invalid production"} }
             params.each { constrain {
                 validateParameter(unwrap()) is ValidationResult.Success
-            }}
+            } otherwise {"Problem with parameter"} }
             params.constrain {
                 it.size == it.stream().map{p -> p.symbol}.collect(Collectors.toSet()).size
             } otherwise {
@@ -45,7 +45,10 @@ object SpecificationRegexAndValidation {
     }
 
     val rgxMsg : () -> String = {
-        FirebaseCrashlytics.getInstance().log("Unexpected non-matching of regex")
+        FirebaseCrashlytics.getInstance().apply {
+            log("Unexpected non-matching of regex")
+            sendUnsentReports()
+        }
         "Not a valid arrangement of words"
     }
     val bracketMsg : () -> String = {
