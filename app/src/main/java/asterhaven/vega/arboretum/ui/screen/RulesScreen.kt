@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -20,14 +22,18 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -48,6 +54,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
+import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.lsystems.CustomSymbol
@@ -76,14 +83,17 @@ private class MutableProduction(before : String, after : String) : RItem {
     val after = mutableStateOf(after)
     fun make() : LProduction = LProduction(before.value, after.value)
 }
-private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String?) : RItem {
+private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String = notAliasSymbol) : RItem {
     val symbol = mutableStateOf(sym)
     val nParams = mutableIntStateOf(np)
     val desc = mutableStateOf(desc)
     val aliases = mutableStateOf(aliasFor)
+    companion object {
+        val notAliasSymbol = ""
+    }
     fun make() : LSymbol =
-        if(aliases.value == null) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
-        else CustomSymbol(symbol.value, nParams.intValue, desc.value, aliases.value!!)
+        if(aliases.value == notAliasSymbol) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
+        else CustomSymbol(symbol.value, nParams.intValue, desc.value, aliases.value)
 }
 private class MutableParam(sym: String, name: String, type: ParameterType, initialValue: Float) : RItem {
     val symbol = mutableStateOf(sym)
@@ -302,7 +312,9 @@ fun RulesScreen(
             }
         }
         Row {
-            Column(modifier = Modifier.width(IntrinsicSize.Min)) {
+            Column(modifier = Modifier
+                .width(IntrinsicSize.Min)
+                .verticalScroll(rememberScrollState())) {
                 //TODO choose params
                 fun isInParens() : Boolean {
                     var i = ec - 1
@@ -407,22 +419,26 @@ fun RulesScreen(
             .fillMaxWidth()
             .padding(top = 16.dp)) {
             Button(onClick = {
-                items.add(
-                    when(c) {
-                        MutableProduction::class -> MutableProduction(" ", " ")
-                        MutableSymbol::class -> MutableSymbol("A", 0,"Apex", null)
-                        else -> {
-                            val x = 1f
-                            MutableParam("", "", TrueConstant(x), x) //todo weird
-                        }
-                    } as T
-                )
-                errorsProductions.add(null)
+                when(c) {
+                    MutableProduction::class -> {
+                        productionRules.add(MutableProduction(" ", " "))
+                        errorsProductions.add(null)
+                    }
+                    MutableSymbol::class -> {
+                        symbols.add(MutableSymbol("A", 0,"Apex"))
+                        errorsSymbolIndividual.add(null)
+                    }
+                    else -> {
+                        val x = 1f
+                        newParams.add(MutableParam("", "", TrueConstant(x), x)) //todo weird
+                        errorsParamIndividual.add(null)
+                    }
+                }
                 formUnvalidated = true
             }) {
                 Text(LocalContext.current.getString(R.string.rules_btn_add, itemName))
             }
-            Button(
+            if(items.size >= 1) Button(
                 onClick = { myReorderDeleteButtonsVisible = !myReorderDeleteButtonsVisible }
             ) {
                 Text(LocalContext.current.getString(R.string.rules_btn_alter))
@@ -480,9 +496,59 @@ fun RulesScreen(
             items = symbols,
             itemName = LocalContext.current.getString(R.string.rules_item_symbol),
             itemErrors = errorsSymbolIndividual
-        ) {
-            iSym, s ->
-            //todo
+        ) { iSym, s ->
+            val isAliasSymbol = s.aliases.value != MutableSymbol.notAliasSymbol
+            var isOptionsExpand = remember { false }
+            Row() {
+                AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
+                if(isAliasSymbol) {
+                    Text("=")
+                    AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
+                }
+                TextField("", onValueChange = { v -> s.desc.value = v })
+                IconButton(enabled = true, onClick = { isOptionsExpand = !isOptionsExpand }){
+                    Icon(Icons.Default.MoreVert, contentDescription = "Options for symbol type and arguments")
+                }
+            }
+            if(isOptionsExpand) { Row() {
+                Text("Normal/substitution")
+                Switch(isAliasSymbol, { b ->
+                    if (!b) s.aliases.value = MutableSymbol.notAliasSymbol
+                    else if (!isAliasSymbol) s.aliases.value = "…"
+                })
+                Text("# Arguments")
+                (0..3).forEach { n ->
+                    RadioButton(selected = s.nParams.intValue == n, onClick = {
+                        when(val np = s.nParams.intValue) {
+                            in 0 until n -> { //add, sparing existing
+                                val sb = StringBuilder()
+                                sb.append(s.symbol.value.let {
+                                    if(np == 0) "$it(" else it.substring(0, it.lastIndex) //remove )
+                                })
+                                repeat(n - np - 1) { sb.append(" ,") }
+                                sb.append(" )")
+                                s.symbol.value = sb.toString()
+                            }
+                            in n..n -> {} //no action
+                            else -> { //cut
+                                fun ans() : String {
+                                    var comma = n - 1
+                                    s.symbol.value.let {
+                                        for (i in it.indices) when (it[i]) {
+                                            '(' -> if (n == 0) return it.substring(0, i)
+                                            ',' -> if(--comma == 0) return it.substring(0, i) + ")"
+                                        }
+                                        if(BuildConfig.DEBUG) check(false) //supposed to be reducing # args
+                                        return it
+                                    }
+                                }
+                                s.symbol.value = ans()
+                            }
+                        }
+                        s.nParams.intValue = n
+                    })
+                }
+            }}
         }
         GroupLabeledSection(
             section = Section.PARAMS,
@@ -493,7 +559,11 @@ fun RulesScreen(
             itemErrors = errorsParamIndividual
         ) {
             iPara, p ->
-            //todo
+            Row() {
+                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara)
+                AccursedTextWrapper(p.name, Section.PARAMS, iPara)
+
+            }
         }
     }
     val context = LocalContext.current

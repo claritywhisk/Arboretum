@@ -25,7 +25,7 @@ object SpecificationRegexAndValidation {
         Validator<Specification> {
             constrain {
                 validateAxiom(it.initial) is ValidationResult.Success
-            }
+            } otherwise { "Check initial/axiom" }
             productions.each { constrain {
                 validateProduction(it) is ValidationResult.Success
             } otherwise {"Invalid production"} }

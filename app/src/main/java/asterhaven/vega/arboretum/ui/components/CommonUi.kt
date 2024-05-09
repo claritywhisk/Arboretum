@@ -55,19 +55,6 @@ fun ParameterSetter (
     }
 }
 
-@Preview
-@Composable
-fun ParamPreview() = ParameterSetter(
-    ArboretumViewModel().ViewModelParamWrapper(
-        LParameter(
-            symbol = "a",
-            name = "name",
-            initialValue = .333f,
-            type = UnitInterval
-        )
-    )
-)
-
 @Composable
 fun LabeledSection(
     label: String,
