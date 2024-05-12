@@ -326,9 +326,7 @@ fun RulesScreen(
             }
         }
         Row {
-            Column(modifier = Modifier
-                .width(IntrinsicSize.Min)
-                .verticalScroll(rememberScrollState())) {
+            Column(modifier = Modifier.width(IntrinsicSize.Min)) {
                 //TODO choose params
                 fun isInParens() : Boolean {
                     var i = ec - 1
@@ -401,7 +399,7 @@ fun RulesScreen(
                                         itemName : String,
                                         itemErrors : SnapshotStateList<ValidationResult.Failure?>,
                                         itemContent: @Composable (Int, T) -> Unit) {
-        var myReorderDeleteButtonsVisible = remember { false }
+        var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
         if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
                 CanShowErrorBelow(error = itemErrors[iItem]) {
@@ -512,7 +510,7 @@ fun RulesScreen(
             itemErrors = errorsSymbolIndividual
         ) { iSym, s ->
             val isAliasSymbol = s.aliases.value != MutableSymbol.notAliasSymbol
-            var isOptionsExpand = remember { false }
+            var isOptionsExpand = remember { mutableStateOf(false) }
             Row() {
                 AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
                 if(isAliasSymbol) {
@@ -586,7 +584,7 @@ fun RulesScreen(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
             }
-            var expanded = remember { false }
+            var expanded = remember { mutableStateOf(false) }
             Row() {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
