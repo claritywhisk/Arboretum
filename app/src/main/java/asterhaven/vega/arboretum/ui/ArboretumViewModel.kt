@@ -13,7 +13,6 @@ import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.Systems
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
-import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.utility.shapes.Icosahedron
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,7 +33,7 @@ class ArboretumViewModel : ViewModel() {
         _params.value = arrayListOf<ArboretumViewModel.ViewModelParamWrapper>()
             .apply {
                 addAll(newSpecification.params.filter { p ->
-                    p.type !is TrueConstant
+                    p.type.range.start != p.type.range.endInclusive //filter out constants
                 }.map { sp -> ViewModelParamWrapper(sp) })
             }
         _specification.value = newSpecification

@@ -21,17 +21,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.LParameter
+import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.lsystems.UnitInterval
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import dev.nesk.akkurate.ValidationResult
 import kotlin.math.roundToInt
 
 @Composable
-fun ParameterSetter (
+fun ParameterSetter ( //todo back whence ye came
     paramWrapper : ArboretumViewModel.ViewModelParamWrapper
 ) {
     val value = paramWrapper.valueSF.collectAsState().value
-    val isInt = paramWrapper.p.type is IntParameterType
     Column {
         Row(
             horizontalArrangement = Arrangement.Center,
@@ -39,13 +39,7 @@ fun ParameterSetter (
         ){
             Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
             Text(paramWrapper.p.name, Modifier.weight(1.5f))
-            TextField(
-                if(isInt) value.roundToInt().toString() else "%.2f".format(value),
-                { newVal -> newVal.toFloatOrNull()?.also(paramWrapper::onValueChange) },
-                Modifier.weight(1f),
-                textStyle = TextStyle(textAlign = TextAlign.Center),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
+            ParamTextField(value, paramWrapper.p.type, paramWrapper::onValueChange, Modifier.weight(1f))
         }
         Slider( value = value,
                 onValueChange = paramWrapper::onValueChange,
@@ -53,6 +47,17 @@ fun ParameterSetter (
                 steps = (if(paramWrapper.p.type is IntParameterType) paramWrapper.p.type.rungsCount() else 0)
         )
     }
+}
+
+@Composable
+fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit, modifier: Modifier = Modifier) {
+    TextField(
+        if(type is IntParameterType) value.roundToInt().toString() else "%.2f".format(value),
+        { newVal -> newVal.toFloatOrNull()?.let { update(it) } },
+        modifier,
+        textStyle = TextStyle(textAlign = TextAlign.Center),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+    )
 }
 
 @Composable

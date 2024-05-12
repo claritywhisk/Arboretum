@@ -16,4 +16,7 @@
     <string name="rules_item_rule">Rule</string>
     <string name="rules_item_symbol">Symbol</string>
     <string name="rules_item_param">Parameter</string>
+    <string name="rules_param_custom">Custom</string>
+    <string name="rules_param_custom_int">Custom (Integer)</string>
+    <string name="rules_params_range_to">to</string>
 </resources>

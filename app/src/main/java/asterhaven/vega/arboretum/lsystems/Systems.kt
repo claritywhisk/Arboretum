@@ -66,7 +66,7 @@ class SpecificationBuilder {
         if(type is DerivationSteps) hasSteps = true
     }
     fun constant(symbol : String, value : Float, name : String = "") =
-        param(symbol, value, name, TrueConstant(value))
+        param(symbol, value, name, ParameterType(value..value))
     fun name(name : String){ n = name }
     fun production(vararg s : String) = productions(*s)
     fun productions(vararg s : String){

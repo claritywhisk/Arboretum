@@ -1,7 +1,9 @@
 package asterhaven.vega.arboretum.ui.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -25,6 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -50,28 +54,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
+import asterhaven.vega.arboretum.lsystems.Constant
 import asterhaven.vega.arboretum.lsystems.CustomSymbol
+import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.LProduction
 import asterhaven.vega.arboretum.lsystems.LSymbol
+import asterhaven.vega.arboretum.lsystems.MenuPT
+import asterhaven.vega.arboretum.lsystems.MenuPTFloat
 import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
-import asterhaven.vega.arboretum.lsystems.TrueConstant
 import asterhaven.vega.arboretum.ui.ArboretumScreen
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
+import asterhaven.vega.arboretum.ui.components.ParamTextField
 import asterhaven.vega.arboretum.ui.components.UniqueIdGenerator
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.reflect.KClass
 
 enum class Section {
@@ -111,10 +125,10 @@ fun RulesScreen(
 ) {
     val heading = HashMap<Section, String>()
     heading[Section.NONE] = ""
-    heading[Section.AXIOM] = LocalContext.current.getString(R.string.rules_label_axiom)
-    heading[Section.RULES] = LocalContext.current.getString(R.string.rules_label_productions)
-    heading[Section.SYMBOLS] = LocalContext.current.getString(R.string.rules_label_custom_symbols)
-    heading[Section.PARAMS] = LocalContext.current.getString(R.string.rules_label_parameters)
+    heading[Section.AXIOM] = stringResource(R.string.rules_label_axiom)
+    heading[Section.RULES] = stringResource(R.string.rules_label_productions)
+    heading[Section.SYMBOLS] = stringResource(R.string.rules_label_custom_symbols)
+    heading[Section.PARAMS] = stringResource(R.string.rules_label_parameters)
 
     val axiom = remember { mutableStateOf(baseSpecification.initial) }
     val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
@@ -293,7 +307,7 @@ fun RulesScreen(
                 tryRow()
                 tryNewSpecification()
             }) {
-                Text(LocalContext.current.getString(R.string.rules_btn_validate))
+                Text(stringResource(R.string.rules_btn_validate))
             }
             else IconButton(onClick = {}) {
                 val errForCurrentRow = when(editingState().section){
@@ -429,19 +443,18 @@ fun RulesScreen(
                         errorsSymbolIndividual.add(null)
                     }
                     else -> {
-                        val x = 1f
-                        newParams.add(MutableParam("", "", TrueConstant(x), x)) //todo weird
+                        newParams.add(MutableParam("", "", Constant, 1f))
                         errorsParamIndividual.add(null)
                     }
                 }
                 formUnvalidated = true
             }) {
-                Text(LocalContext.current.getString(R.string.rules_btn_add, itemName))
+                Text(stringResource(R.string.rules_btn_add, itemName))
             }
             if(items.size >= 1) Button(
                 onClick = { myReorderDeleteButtonsVisible = !myReorderDeleteButtonsVisible }
             ) {
-                Text(LocalContext.current.getString(R.string.rules_btn_alter))
+                Text(stringResource(R.string.rules_btn_alter))
             }
         }
     }
@@ -450,6 +463,7 @@ fun RulesScreen(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     // Check for clicks outside (by design = unconsumed) to dismiss controls
@@ -464,7 +478,7 @@ fun RulesScreen(
                 }
             }
     ) {
-        LabeledSection(LocalContext.current.getString(R.string.rules_label_axiom), errorAxiom) {
+        LabeledSection(stringResource(R.string.rules_label_axiom), errorAxiom) {
             val editingAxiom = editingState().section == Section.AXIOM
             Row(
                 Modifier
@@ -479,7 +493,7 @@ fun RulesScreen(
             c = MutableProduction::class,
             error = errorOverall, //showing system errors here in the middle... for now
             items = productionRules,
-            itemName = LocalContext.current.getString(R.string.rules_item_rule),
+            itemName = stringResource(R.string.rules_item_rule),
             itemErrors = errorsProductions
         ) {
             iRule, pr ->
@@ -494,7 +508,7 @@ fun RulesScreen(
             c = MutableSymbol::class,
             error = errorSymbols,
             items = symbols,
-            itemName = LocalContext.current.getString(R.string.rules_item_symbol),
+            itemName = stringResource(R.string.rules_item_symbol),
             itemErrors = errorsSymbolIndividual
         ) { iSym, s ->
             val isAliasSymbol = s.aliases.value != MutableSymbol.notAliasSymbol
@@ -555,14 +569,62 @@ fun RulesScreen(
             c = MutableParam::class,
             error = errorParams,
             items = newParams,
-            itemName = LocalContext.current.getString(R.string.rules_item_param),
+            itemName = stringResource(R.string.rules_item_param),
             itemErrors = errorsParamIndividual
-        ) {
-            iPara, p ->
+        ) { iPara, p ->
             Row() {
-                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara)
-                AccursedTextWrapper(p.name, Section.PARAMS, iPara)
-
+                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
+                AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
+                TextField(
+                    p.initialValue.value.let {
+                        if (p.type is IntParameterType) it.roundToInt().toString()
+                        else "%.2f".format(it)
+                    },
+                    { newVal -> newVal.toFloatOrNull()?.let { p.initialValue.value = it } },
+                    Modifier.weight(1f),
+                    textStyle = TextStyle(textAlign = TextAlign.Center),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+            }
+            var expanded = remember { false }
+            Row() {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = p.type.value.let { when {
+                            it is MenuPT -> it.name
+                            it is IntParameterType -> stringResource(R.string.rules_param_custom_int)
+                            else -> stringResource(R.string.rules_param_custom)
+                        } },
+                        modifier = Modifier.clickable {
+                            expanded = !expanded
+                        }
+                    )
+                    DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
+                        MenuPT.list.forEach {
+                            DropdownMenuItem(text = { Text(it.name) }, onClick = {
+                                p.type.value = it as ParameterType
+                                expanded = false
+                            })
+                        }
+                    }
+                }
+                val t = p.type.value
+                val isConstant = t.range.start == t.range.endInclusive
+                @Composable
+                fun RangeTF(otherEnd : Float) = ParamTextField(t.range.start, t, { v ->
+                    val l = min(v, otherEnd)
+                    val r = max(v, otherEnd)
+                    p.type.value = when {
+                        isConstant -> ParameterType(v, v)
+                        t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
+                        else -> ParameterType(l, r)
+                    }
+                })
+                RangeTF(t.range.endInclusive)
+                if(!isConstant) {
+                    Text(stringResource(R.string.rules_params_range_to))
+                    RangeTF(t.range.start)
+                }
             }
         }
     }
