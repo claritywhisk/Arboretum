@@ -39,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -367,15 +368,15 @@ fun RulesScreen(
         i : Int,
         itemDescription : String) {
         IconButton(enabled = i > 0, onClick = {
-            items.add(i - 1, items.removeAt(i))
-            errs.add(i - 1, errs.removeAt(i))
+            items[i] = items[i - 1].also { items[i - 1] = items[i] }
+            errs[i]  =  errs[i - 1].also {  errs[i - 1] =  errs[i] }
             formUnvalidated = true
         }) {
             Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Move $itemDescription Up")
         }
         IconButton(enabled = i != items.lastIndex, onClick = {
-            items.add(i + 1, items.removeAt(i))
-            errs.add(i + 1, errs.removeAt(i))
+            items[i] = items[i + 1].also { items[i + 1] = items[i] }
+            errs[i]  =  errs[i + 1].also {  errs[i + 1] =  errs[i] }
             formUnvalidated = true
         }) {
             Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Move $itemDescription Down")
@@ -399,28 +400,30 @@ fun RulesScreen(
         var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
         if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
-                CanShowErrorBelow(error = itemErrors[iItem]) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .consumeClickEventsWhen {
-                                editingState().let {
-                                    it.section == section && it.row == iItem
-                                }
-                            },
+                key(item) {
+                    CanShowErrorBelow(error = itemErrors[iItem]) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .consumeClickEventsWhen {
+                                    editingState().let {
+                                        it.section == section && it.row == iItem
+                                    }
+                                },
                             verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        //CONTENT
-                        itemContent(iItem, item)
-                        if (myReorderDeleteButtonsVisible) {
-                            Spacer(Modifier.weight(.01f))
-                            Row(Modifier.align(Alignment.CenterVertically)) {
-                                ReorderDeleteButtons(items, itemErrors, iItem,itemName)
+                        ) {
+                            //CONTENT
+                            itemContent(iItem, item)
+                            if (myReorderDeleteButtonsVisible) {
+                                Spacer(Modifier.weight(.01f))
+                                Row(Modifier.align(Alignment.CenterVertically)) {
+                                    ReorderDeleteButtons(items, itemErrors, iItem, itemName)
+                                }
                             }
                         }
                     }
+                    if (editingState().row == iItem && editingState().section == section) EditTray()
                 }
-                if(editingState().row == iItem && editingState().section == section) EditTray()
             }
         }
         //Buttons controlling add, reorder/delete rules
@@ -492,11 +495,15 @@ fun RulesScreen(
             itemErrors = errorsProductions
         ) {
             iRule, pr ->
-            AccursedTextWrapper(pr.before, Section.RULES, iRule)
-            Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-            AccursedTextWrapper(pr.after, Section.RULES, iRule, Modifier
-                .weight(1f)
-                .width(IntrinsicSize.Max))
+            //TODO key?
+                AccursedTextWrapper(pr.before, Section.RULES, iRule)
+                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
+                AccursedTextWrapper(
+                    pr.after, Section.RULES, iRule, Modifier
+                        .weight(1f)
+                        .width(IntrinsicSize.Max)
+                )
+
         }
         GroupLabeledSection(
             section = Section.SYMBOLS,
