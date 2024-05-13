@@ -587,16 +587,9 @@ fun RulesScreen(
             Pair({
                 AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
                 AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
-                TextField(
-                    p.initialValue.value.let {
-                        if (p.type is IntParameterType) it.roundToInt().toString()
-                        else "%.2f".format(it)
-                    },
-                    { newVal -> newVal.toFloatOrNull()?.let { p.initialValue.value = it } },
-                    Modifier.weight(1f),
-                    textStyle = TextStyle(textAlign = TextAlign.Center),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
+                    p.initialValue.floatValue = newFloatVal
+                }
             }, {
                 ArbDropMenu(selection = p.type,
                     onSelect = { pt -> p.type.value = pt as ParameterType },

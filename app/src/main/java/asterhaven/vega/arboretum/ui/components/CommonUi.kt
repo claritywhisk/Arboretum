@@ -5,8 +5,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -48,7 +52,7 @@ fun ParameterSetter ( //todo back whence ye came
         ){
             Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
             Text(paramWrapper.p.name, Modifier.weight(1.5f))
-            ParamTextField(value, paramWrapper.p.type, paramWrapper::onValueChange, Modifier.weight(1f))
+            ParamTextField(value, paramWrapper.p.type, paramWrapper::onValueChange)
         }
         Slider( value = value,
                 onValueChange = paramWrapper::onValueChange,
@@ -59,11 +63,12 @@ fun ParameterSetter ( //todo back whence ye came
 }
 
 @Composable
-fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit, modifier: Modifier = Modifier) {
+fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit,) {
     TextField(
         if(type is IntParameterType) value.roundToInt().toString() else "%.2f".format(value),
         { newVal -> newVal.toFloatOrNull()?.let { update(it) } },
-        modifier,
+        Modifier.width(96.dp),
+        singleLine = true,
         textStyle = TextStyle(textAlign = TextAlign.Center),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
