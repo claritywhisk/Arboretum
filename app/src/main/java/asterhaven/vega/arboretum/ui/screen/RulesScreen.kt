@@ -95,16 +95,16 @@ private class MutableProduction(before : String, after : String) : RItem {
     val after = mutableStateOf(after)
     fun make() : LProduction = LProduction(before.value, after.value)
 }
-private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String = notAliasSymbol) : RItem {
+private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String = NOT_ALIAS_SYMBOL) : RItem {
     val symbol = mutableStateOf(sym)
     val nParams = mutableIntStateOf(np)
     val desc = mutableStateOf(desc)
     val aliases = mutableStateOf(aliasFor)
     companion object {
-        val notAliasSymbol = ""
+        const val NOT_ALIAS_SYMBOL = ""
     }
     fun make() : LSymbol =
-        if(aliases.value == notAliasSymbol) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
+        if(aliases.value == NOT_ALIAS_SYMBOL) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
         else CustomSymbol(symbol.value, nParams.intValue, desc.value, aliases.value)
 }
 private class MutableParam(sym: String, name: String, type: ParameterType, initialValue: Float) : RItem {
@@ -396,7 +396,7 @@ fun RulesScreen(
                                         items : SnapshotStateList<T>,
                                         itemName : String,
                                         itemErrors : SnapshotStateList<ValidationResult.Failure?>,
-                                        itemContent: @Composable (Int, T) -> Unit) {
+                                        itemContent: @Composable (Int, T) -> Pair<@Composable () -> Unit, @Composable () -> Unit>) {
         var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
         if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
@@ -412,13 +412,18 @@ fun RulesScreen(
                                 },
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            //CONTENT
-                            itemContent(iItem, item)
-                            if (myReorderDeleteButtonsVisible) {
-                                Spacer(Modifier.weight(.01f))
-                                Row(Modifier.align(Alignment.CenterVertically)) {
-                                    ReorderDeleteButtons(items, itemErrors, iItem, itemName)
+                            val (firstRow, secondRow) = itemContent(iItem, item)
+                            Row {
+                                firstRow()
+                                if (myReorderDeleteButtonsVisible) {
+                                    //Spacer(Modifier.weight(.01f))
+                                    Row(Modifier.align(Alignment.CenterVertically)) {
+                                        ReorderDeleteButtons(items, itemErrors, iItem, itemName)
+                                    }
                                 }
+                            }
+                            Row {
+                                secondRow()
                             }
                         }
                     }
@@ -494,8 +499,7 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_rule),
             itemErrors = errorsProductions
         ) {
-            iRule, pr ->
-            //TODO key?
+            iRule, pr -> Pair({
                 AccursedTextWrapper(pr.before, Section.RULES, iRule)
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
                 AccursedTextWrapper(
@@ -503,7 +507,7 @@ fun RulesScreen(
                         .weight(1f)
                         .width(IntrinsicSize.Max)
                 )
-
+            }, {})
         }
         GroupLabeledSection(
             section = Section.SYMBOLS,
@@ -513,58 +517,62 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_symbol),
             itemErrors = errorsSymbolIndividual
         ) { iSym, s ->
-            val isAliasSymbol = s.aliases.value != MutableSymbol.notAliasSymbol
-            var isOptionsExpand = remember { mutableStateOf(false) }
-            Row() {
+            val isAliasSymbol = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
+            val isOptionsExpand = remember { mutableStateOf(false) }
+            Pair({
                 AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
                 if(isAliasSymbol) {
                     Text("=")
                     AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
                 }
-                TextField("", onValueChange = { v -> s.desc.value = v })
+                TextField("", onValueChange = { v -> s.desc.value = v },
+                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground),
+                    modifier = Modifier.weight(.1f)
+                )
                 IconButton(enabled = true, onClick = { isOptionsExpand.value = !isOptionsExpand.value }){
                     Icon(Icons.Default.MoreVert, contentDescription = "Options for symbol type and arguments")
                 }
-            }
-            if(isOptionsExpand.value) { Row() {
-                Text("Normal/substitution")
-                Switch(isAliasSymbol, { b ->
-                    if (!b) s.aliases.value = MutableSymbol.notAliasSymbol
-                    else if (!isAliasSymbol) s.aliases.value = "…"
-                })
-                Text("# Arguments")
-                (0..3).forEach { n ->
-                    RadioButton(selected = s.nParams.intValue == n, onClick = {
-                        when(val np = s.nParams.intValue) {
-                            in 0 until n -> { //add, sparing existing
-                                val sb = StringBuilder()
-                                sb.append(s.symbol.value.let {
-                                    if(np == 0) "$it(" else it.substring(0, it.lastIndex) //remove )
-                                })
-                                repeat(n - np - 1) { sb.append(" ,") }
-                                sb.append(" )")
-                                s.symbol.value = sb.toString()
-                            }
-                            in n..n -> {} //no action
-                            else -> { //cut
-                                fun ans() : String {
-                                    var comma = n - 1
-                                    s.symbol.value.let {
-                                        for (i in it.indices) when (it[i]) {
-                                            '(' -> if (n == 0) return it.substring(0, i)
-                                            ',' -> if(--comma == 0) return it.substring(0, i) + ")"
-                                        }
-                                        if(BuildConfig.DEBUG) check(false) //supposed to be reducing # args
-                                        return it
-                                    }
-                                }
-                                s.symbol.value = ans()
-                            }
-                        }
-                        s.nParams.intValue = n
+            }, {
+                if(isOptionsExpand.value) {
+                    Text("Normal/substitution")
+                    Switch(isAliasSymbol, { b ->
+                        if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
+                        else if (!isAliasSymbol) s.aliases.value = "…"
                     })
+                    Text("# Arguments")
+                    (0..3).forEach { n ->
+                        RadioButton(selected = s.nParams.intValue == n, onClick = {
+                            when(val np = s.nParams.intValue) {
+                                in 0 until n -> { //add, sparing existing
+                                    val sb = StringBuilder()
+                                    sb.append(s.symbol.value.let {
+                                        if(np == 0) "$it(" else it.substring(0, it.lastIndex) //remove )
+                                    })
+                                    repeat(n - np - 1) { sb.append(" ,") }
+                                    sb.append(" )")
+                                    s.symbol.value = sb.toString()
+                                }
+                                in n..n -> {} //no action
+                                else -> { //cut
+                                    fun ans() : String {
+                                        var comma = n - 1
+                                        s.symbol.value.let {
+                                            for (i in it.indices) when (it[i]) {
+                                                '(' -> if (n == 0) return it.substring(0, i)
+                                                ',' -> if(--comma == 0) return it.substring(0, i) + ")"
+                                            }
+                                            if(BuildConfig.DEBUG) check(false) //supposed to be reducing # args
+                                            return it
+                                        }
+                                    }
+                                    s.symbol.value = ans()
+                                }
+                            }
+                            s.nParams.intValue = n
+                        })
+                    }
                 }
-            }}
+            })
         }
         GroupLabeledSection(
             section = Section.PARAMS,
@@ -574,7 +582,7 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_param),
             itemErrors = errorsParamIndividual
         ) { iPara, p ->
-            Row() {
+            Pair({
                 AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
                 AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
                 TextField(
@@ -587,9 +595,7 @@ fun RulesScreen(
                     textStyle = TextStyle(textAlign = TextAlign.Center),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
-            }
-            var expanded = remember { mutableStateOf(false) }
-            Row() {
+            }, {
                 ArbDropMenu(selection = p.type,
                     onSelect = { pt -> p.type.value = pt as ParameterType },
                     name = { pt -> when(pt) {
@@ -616,7 +622,7 @@ fun RulesScreen(
                     Text(stringResource(R.string.rules_params_range_to))
                     RangeTF(t.range.start)
                 }
-            }
+            })
         }
     }
     val context = LocalContext.current
