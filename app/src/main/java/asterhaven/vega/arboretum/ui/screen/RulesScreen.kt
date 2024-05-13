@@ -1,9 +1,7 @@
 package asterhaven.vega.arboretum.ui.screen
 
 import android.widget.Toast
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -28,7 +26,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -73,10 +70,10 @@ import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.LProduction
 import asterhaven.vega.arboretum.lsystems.LSymbol
 import asterhaven.vega.arboretum.lsystems.MenuPT
-import asterhaven.vega.arboretum.lsystems.MenuPTFloat
 import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
 import asterhaven.vega.arboretum.ui.ArboretumScreen
+import asterhaven.vega.arboretum.ui.components.ArbDropMenu
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 import asterhaven.vega.arboretum.ui.components.ParamTextField
@@ -518,11 +515,11 @@ fun RulesScreen(
                     AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
                 }
                 TextField("", onValueChange = { v -> s.desc.value = v })
-                IconButton(enabled = true, onClick = { isOptionsExpand = !isOptionsExpand }){
+                IconButton(enabled = true, onClick = { isOptionsExpand.value = !isOptionsExpand.value }){
                     Icon(Icons.Default.MoreVert, contentDescription = "Options for symbol type and arguments")
                 }
             }
-            if(isOptionsExpand) { Row() {
+            if(isOptionsExpand.value) { Row() {
                 Text("Normal/substitution")
                 Switch(isAliasSymbol, { b ->
                     if (!b) s.aliases.value = MutableSymbol.notAliasSymbol
@@ -586,26 +583,15 @@ fun RulesScreen(
             }
             var expanded = remember { mutableStateOf(false) }
             Row() {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = p.type.value.let { when {
-                            it is MenuPT -> it.name
-                            it is IntParameterType -> stringResource(R.string.rules_param_custom_int)
-                            else -> stringResource(R.string.rules_param_custom)
-                        } },
-                        modifier = Modifier.clickable {
-                            expanded = !expanded
-                        }
-                    )
-                    DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
-                        MenuPT.list.forEach {
-                            DropdownMenuItem(text = { Text(it.name) }, onClick = {
-                                p.type.value = it as ParameterType
-                                expanded = false
-                            })
-                        }
-                    }
-                }
+                ArbDropMenu(selection = p.type,
+                    onSelect = { pt -> p.type.value = pt as ParameterType },
+                    name = { pt -> when(pt) {
+                        is MenuPT -> pt.name
+                        is IntParameterType -> stringResource(R.string.rules_param_custom_int)
+                        else -> stringResource(R.string.rules_param_custom)
+                    }},
+                    list = MenuPT.list
+                )
                 val t = p.type.value
                 val isConstant = t.range.start == t.range.endInclusive
                 @Composable
