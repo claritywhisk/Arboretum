@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -216,7 +215,10 @@ fun RulesScreen(
         val text = state[uid]!!.text
         ClickableText(
             modifier = modifier.padding(8.dp),
-            style = TextStyle(color = MaterialTheme.colorScheme.onBackground),
+            style = TextStyle(
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                background = MaterialTheme.colorScheme.surfaceVariant
+            ),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
                 append(text)
@@ -446,7 +448,7 @@ fun RulesScreen(
                         errorsSymbolIndividual.add(null)
                     }
                     else -> {
-                        newParams.add(MutableParam("", "", Constant, 1f))
+                        newParams.add(MutableParam(" ", " ", Constant, 1f))
                         errorsParamIndividual.add(null)
                     }
                 }
