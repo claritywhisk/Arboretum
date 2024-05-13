@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -55,8 +54,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
@@ -82,7 +79,6 @@ import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.math.roundToInt
 import kotlin.reflect.KClass
 
 enum class Section {
@@ -590,20 +586,24 @@ fun RulesScreen(
                 ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
                     p.initialValue.floatValue = newFloatVal
                 }
-            }, {
-                ArbDropMenu(selection = p.type,
+            }) {
+                ArbDropMenu(
+                    selection = p.type,
                     onSelect = { pt -> p.type.value = pt as ParameterType },
-                    name = { pt -> when(pt) {
-                        is MenuPT -> pt.name
-                        is IntParameterType -> stringResource(R.string.rules_param_custom_int)
-                        else -> stringResource(R.string.rules_param_custom)
-                    }},
+                    name = { pt ->
+                        when (pt) {
+                            is MenuPT -> pt.name
+                            is IntParameterType -> stringResource(R.string.rules_param_custom_int)
+                            else -> stringResource(R.string.rules_param_custom)
+                        }
+                    },
                     list = MenuPT.list
                 )
                 val t = p.type.value
                 val isConstant = t.range.start == t.range.endInclusive
+
                 @Composable
-                fun RangeTF(otherEnd : Float) = ParamTextField(t.range.start, t, { v ->
+                fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t) { v ->
                     val l = min(v, otherEnd)
                     val r = max(v, otherEnd)
                     p.type.value = when {
@@ -611,13 +611,13 @@ fun RulesScreen(
                         t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
                         else -> ParameterType(l, r)
                     }
-                })
+                }
                 RangeTF(t.range.endInclusive)
-                if(!isConstant) {
+                if (!isConstant) {
                     Text(stringResource(R.string.rules_params_range_to))
                     RangeTF(t.range.start)
                 }
-            })
+            }
         }
     }
     val context = LocalContext.current
