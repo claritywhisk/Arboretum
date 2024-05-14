@@ -388,47 +388,41 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun <T : RItem> GroupLabeledSection(section : Section,
-                                        c : KClass<T>,
-                                        error : ValidationResult.Failure?,
-                                        items : SnapshotStateList<T>,
-                                        itemName : String,
-                                        itemErrors : SnapshotStateList<ValidationResult.Failure?>,
-                                        itemContent: @Composable (Int, T) -> Pair<@Composable () -> Unit, @Composable () -> Unit>) {
-        var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
-        if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
-            items.forEachIndexed { iItem, item ->
-                key(item) {
-                    CanShowErrorBelow(error = itemErrors[iItem]) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .consumeClickEventsWhen {
-                                    editingState().let {
-                                        it.section == section && it.row == iItem
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            val (firstRow, secondRow) = itemContent(iItem, item)
-                            Row {
-                                firstRow()
-                                if (myReorderDeleteButtonsVisible) {
-                                    //Spacer(Modifier.weight(.01f))
-                                    Row(Modifier.align(Alignment.CenterVertically)) {
-                                        ReorderDeleteButtons(items, itemErrors, iItem, itemName)
+        fun <T : RItem> GroupLabeledSection(section : Section,
+                                            c : KClass<T>,
+                                            error : ValidationResult.Failure?,
+                                            items : SnapshotStateList<T>,
+                                            itemName : String,
+                                            itemErrors : SnapshotStateList<ValidationResult.Failure?>,
+                                            itemContent: @Composable (Int, T, @Composable () -> Unit) -> Unit) {
+            var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+            if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
+                items.forEachIndexed { iItem, item ->
+                    key(item) {
+                        CanShowErrorBelow(error = itemErrors[iItem]) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .consumeClickEventsWhen {
+                                        editingState().let {
+                                            it.section == section && it.row == iItem
+                                        }
+                                    },
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                itemContent(iItem, item) {
+                                    if (myReorderDeleteButtonsVisible) {
+                                        Row(Modifier.align(Alignment.CenterVertically)) {
+                                            ReorderDeleteButtons(items, itemErrors, iItem, itemName)
+                                        }
                                     }
                                 }
                             }
-                            Row {
-                                secondRow()
-                            }
                         }
+                        if (editingState().row == iItem && editingState().section == section) EditTray()
                     }
-                    if (editingState().row == iItem && editingState().section == section) EditTray()
                 }
             }
-        }
         //Buttons controlling add, reorder/delete rules
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier
             .fillMaxWidth()
@@ -481,13 +475,16 @@ fun RulesScreen(
     ) {
         LabeledSection(stringResource(R.string.rules_label_axiom), errorAxiom) {
             val editingAxiom = editingState().section == Section.AXIOM
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .consumeClickEventsWhen { editingAxiom }) {
-                AccursedTextWrapper(axiom, Section.AXIOM, 0)
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .consumeClickEventsWhen { editingAxiom }
+                ) {
+                    AccursedTextWrapper(axiom, Section.AXIOM, 0)
+                }
             }
-            if(editingAxiom) EditTray()
+            if (editingAxiom) EditTray()
         }
         GroupLabeledSection(
             section = Section.RULES,
@@ -496,16 +493,19 @@ fun RulesScreen(
             items = productionRules,
             itemName = stringResource(R.string.rules_item_rule),
             itemErrors = errorsProductions
-        ) {
-            iRule, pr -> Pair({
-                AccursedTextWrapper(pr.before, Section.RULES, iRule)
-                Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-                AccursedTextWrapper(
-                    pr.after, Section.RULES, iRule, Modifier
-                        .weight(1f)
-                        .width(IntrinsicSize.Max)
-                )
-            }, {})
+        ) { iRule, pr, del ->
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AccursedTextWrapper(pr.before, Section.RULES, iRule)
+                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
+                    AccursedTextWrapper(
+                        pr.after, Section.RULES, iRule, Modifier
+                            .weight(1f)
+                            .width(IntrinsicSize.Max)
+                    )
+                    del()
+                }
+            }
         }
         GroupLabeledSection(
             section = Section.SYMBOLS,
@@ -514,63 +514,78 @@ fun RulesScreen(
             items = symbols,
             itemName = stringResource(R.string.rules_item_symbol),
             itemErrors = errorsSymbolIndividual
-        ) { iSym, s ->
-            val isAliasSymbol = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
-            val isOptionsExpand = remember { mutableStateOf(false) }
-            Pair({
-                AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
-                if(isAliasSymbol) {
-                    Text("=")
-                    AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
+        ) { iSym, s, del ->
+            fun isAliasSymbol() = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
+            var isOptionsExpand by remember { mutableStateOf(false) }
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
+                    if (isAliasSymbol()) {
+                        Text("=")
+                        AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
+                    }
+                    TextField(
+                        "", onValueChange = { v -> s.desc.value = v },
+                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground),
+                        modifier = Modifier.weight(.1f)
+                    )
+                    IconButton(enabled = true, onClick = { isOptionsExpand = !isOptionsExpand }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = "Options for symbol type and arguments"
+                        )
+                    }
+                    del()
                 }
-                TextField("", onValueChange = { v -> s.desc.value = v },
-                    textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground),
-                    modifier = Modifier.weight(.1f)
-                )
-                IconButton(enabled = true, onClick = { isOptionsExpand.value = !isOptionsExpand.value }){
-                    Icon(Icons.Default.MoreVert, contentDescription = "Options for symbol type and arguments")
-                }
-            }, {
-                if(isOptionsExpand.value) {
-                    Text("Normal/substitution")
-                    Switch(isAliasSymbol, { b ->
-                        if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
-                        else if (!isAliasSymbol) s.aliases.value = "…"
-                    })
-                    Text("# Arguments")
-                    (0..3).forEach { n ->
-                        RadioButton(selected = s.nParams.intValue == n, onClick = {
-                            when(val np = s.nParams.intValue) {
-                                in 0 until n -> { //add, sparing existing
-                                    val sb = StringBuilder()
-                                    sb.append(s.symbol.value.let {
-                                        if(np == 0) "$it(" else it.substring(0, it.lastIndex) //remove )
-                                    })
-                                    repeat(n - np - 1) { sb.append(" ,") }
-                                    sb.append(" )")
-                                    s.symbol.value = sb.toString()
-                                }
-                                in n..n -> {} //no action
-                                else -> { //cut
-                                    fun ans() : String {
-                                        var comma = n - 1
-                                        s.symbol.value.let {
-                                            for (i in it.indices) when (it[i]) {
-                                                '(' -> if (n == 0) return it.substring(0, i)
-                                                ',' -> if(--comma == 0) return it.substring(0, i) + ")"
-                                            }
-                                            if(BuildConfig.DEBUG) check(false) //supposed to be reducing # args
-                                            return it
-                                        }
-                                    }
-                                    s.symbol.value = ans()
-                                }
-                            }
-                            s.nParams.intValue = n
+                if (isOptionsExpand) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Substitution")
+                        Switch(isAliasSymbol(), { b ->
+                            if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
+                            else if (!isAliasSymbol()) s.aliases.value = "…"
                         })
+                        Text("# Arguments")
+                        (0..3).forEach { n ->
+                            RadioButton(selected = s.nParams.intValue == n, onClick = {
+                                when (val np = s.nParams.intValue) {
+                                    in 0 until n -> { //add, sparing existing
+                                        val sb = StringBuilder()
+                                        sb.append(s.symbol.value.let {
+                                            if (np == 0) "$it(" else it.substring(
+                                                0,
+                                                it.lastIndex
+                                            ) //remove )
+                                        })
+                                        repeat(n - np - 1) { sb.append(" ,") }
+                                        sb.append(" )")
+                                        s.symbol.value = sb.toString()
+                                    }
+
+                                    in n..n -> {} //no action
+                                    else -> { //cut
+                                        fun ans(): String {
+                                            var comma = n - 1
+                                            s.symbol.value.let {
+                                                for (i in it.indices) when (it[i]) {
+                                                    '(' -> if (n == 0) return it.substring(0, i)
+                                                    ',' -> if (--comma == 0) return it.substring(
+                                                        0,
+                                                        i
+                                                    ) + ")"
+                                                }
+                                                if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args
+                                                return it
+                                            }
+                                        }
+                                        s.symbol.value = ans()
+                                    }
+                                }
+                                s.nParams.intValue = n
+                            })
+                        }
                     }
                 }
-            })
+            }
         }
         GroupLabeledSection(
             section = Section.PARAMS,
@@ -579,43 +594,47 @@ fun RulesScreen(
             items = newParams,
             itemName = stringResource(R.string.rules_item_param),
             itemErrors = errorsParamIndividual
-        ) { iPara, p ->
-            Pair({
-                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
-                AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
-                ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
-                    p.initialValue.floatValue = newFloatVal
-                }
-            }) {
-                ArbDropMenu(
-                    selection = p.type,
-                    onSelect = { pt -> p.type.value = pt as ParameterType },
-                    name = { pt ->
-                        when (pt) {
-                            is MenuPT -> pt.name
-                            is IntParameterType -> stringResource(R.string.rules_param_custom_int)
-                            else -> stringResource(R.string.rules_param_custom)
-                        }
-                    },
-                    list = MenuPT.list
-                )
-                val t = p.type.value
-                val isConstant = t.range.start == t.range.endInclusive
-
-                @Composable
-                fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t) { v ->
-                    val l = min(v, otherEnd)
-                    val r = max(v, otherEnd)
-                    p.type.value = when {
-                        isConstant -> ParameterType(v, v)
-                        t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
-                        else -> ParameterType(l, r)
+        ) { iPara, p, del ->
+            Column {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
+                    AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
+                    ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
+                        p.initialValue.floatValue = newFloatVal
                     }
+                    del()
                 }
-                RangeTF(t.range.endInclusive)
-                if (!isConstant) {
-                    Text(stringResource(R.string.rules_params_range_to))
-                    RangeTF(t.range.start)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    ArbDropMenu(
+                        selection = p.type,
+                        onSelect = { pt -> p.type.value = pt as ParameterType },
+                        name = { pt ->
+                            when (pt) {
+                                is MenuPT -> pt.name
+                                is IntParameterType -> stringResource(R.string.rules_param_custom_int)
+                                else -> stringResource(R.string.rules_param_custom)
+                            }
+                        },
+                        list = MenuPT.list
+                    )
+                    val t = p.type.value
+                    val isConstant = t.range.start == t.range.endInclusive
+
+                    @Composable
+                    fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t) { v ->
+                        val l = min(v, otherEnd)
+                        val r = max(v, otherEnd)
+                        p.type.value = when {
+                            isConstant -> ParameterType(v, v)
+                            t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
+                            else -> ParameterType(l, r)
+                        }
+                    }
+                    RangeTF(t.range.endInclusive)
+                    if (!isConstant) {
+                        Text(stringResource(R.string.rules_params_range_to))
+                        RangeTF(t.range.start)
+                    }
                 }
             }
         }
