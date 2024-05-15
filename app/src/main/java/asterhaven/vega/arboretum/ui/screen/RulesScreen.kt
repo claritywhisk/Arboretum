@@ -32,7 +32,6 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
@@ -52,7 +51,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
@@ -70,11 +68,13 @@ import asterhaven.vega.arboretum.lsystems.MenuPT
 import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.lsystems.SpecificationRegexAndValidation
 import asterhaven.vega.arboretum.ui.ArboretumScreen
+import asterhaven.vega.arboretum.ui.components.ArbBasicTextField
 import asterhaven.vega.arboretum.ui.components.ArbDropMenu
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 import asterhaven.vega.arboretum.ui.components.ParamTextField
 import asterhaven.vega.arboretum.ui.components.UniqueIdGenerator
+import asterhaven.vega.arboretum.ui.components.arbClickableTextStyle
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import kotlin.math.max
@@ -211,10 +211,7 @@ fun RulesScreen(
         val text = state[uid]!!.text
         ClickableText(
             modifier = modifier.padding(8.dp),
-            style = TextStyle(
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                background = MaterialTheme.colorScheme.surfaceVariant
-            ),
+            style = arbClickableTextStyle(),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
                 append(text)
@@ -229,7 +226,7 @@ fun RulesScreen(
                 }
             }
         ) { clickedI ->
-            val ci = clickedI.coerceIn(text.indices) //todo explain why needed, delete smth click end
+            val ci = clickedI.coerceIn(text.indices) //todo also crash todo explain why needed, delete smth click end
             val nextI = (clickedI + 1).coerceIn(text.indices)
             elementBeingEdited = uid
             editingState().updateCursor(when {
@@ -524,10 +521,8 @@ fun RulesScreen(
                         Text("=")
                         AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
                     }
-                    TextField(
-                        "", onValueChange = { v -> s.desc.value = v },
-                        textStyle = TextStyle(color = MaterialTheme.colorScheme.onBackground),
-                        modifier = Modifier.weight(.1f)
+                    ArbBasicTextField(s.desc.value, onValueChange = { v -> s.desc.value = v },
+                        Modifier.weight(.1f)
                     )
                     IconButton(enabled = true, onClick = { isOptionsExpand = !isOptionsExpand }) {
                         Icon(
@@ -598,7 +593,7 @@ fun RulesScreen(
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
-                    AccursedTextWrapper(p.name, Section.PARAMS, iPara, Modifier.weight(1.5f))
+                    ArbBasicTextField(p.name.value, { s -> p.name.value = s }, Modifier.weight(1.5f))
                     ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
                         p.initialValue.floatValue = newFloatVal
                     }

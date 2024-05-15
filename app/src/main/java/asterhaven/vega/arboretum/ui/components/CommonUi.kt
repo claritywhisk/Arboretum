@@ -7,14 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -32,6 +31,13 @@ import asterhaven.vega.arboretum.lsystems.ParameterType
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import dev.nesk.akkurate.ValidationResult
 import kotlin.math.roundToInt
+
+@Composable
+fun arbClickableTextStyle() = TextStyle(
+    color = MaterialTheme.colorScheme.onSurfaceVariant,
+    background = MaterialTheme.colorScheme.surfaceVariant,
+    textAlign = TextAlign.Center
+)
 
 @Composable
 fun ParameterSetter ( //todo back whence ye came
@@ -56,13 +62,29 @@ fun ParameterSetter ( //todo back whence ye came
 }
 
 @Composable
-fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit,) {
-    TextField(
+fun ArbBasicTextField(
+    value : String,
+    onValueChange : (String) -> Unit,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions()
+) {
+    BasicTextField(
+        value,
+        onValueChange,
+        modifier,
+        //Modifier.width(IntrinsicSize.Min)
+        keyboardOptions = keyboardOptions,
+        singleLine = true,
+        textStyle = arbClickableTextStyle()
+    )
+}
+
+@Composable
+fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit) {
+    ArbBasicTextField(
         if(type is IntParameterType) value.roundToInt().toString() else "%.2f".format(value),
         { newVal -> newVal.toFloatOrNull()?.let { update(it) } },
-        Modifier.width(96.dp),
-        singleLine = true,
-        textStyle = TextStyle(textAlign = TextAlign.Center),
+        //Modifier.width(IntrinsicSize.Min), //width(96.dp), todo
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
 }
