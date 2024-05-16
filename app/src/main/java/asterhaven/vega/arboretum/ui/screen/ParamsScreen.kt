@@ -36,7 +36,7 @@ fun ParamsScreen(
     collapsed : Boolean = true
 ) {
     val stepsParam by remember { mutableStateOf(params.first { it.p.type is DerivationSteps }) }
-    val steps = stepsParam.valueSF.map { it.roundToInt() }.collectAsState(stepsParam.valueSF.value.roundToInt())
+    val steps = stepsParam.valueSF.map { it.roundToInt() }.collectAsState(stepsParam.p.initialValue.roundToInt())
     val populate = {
         populateAction(steps.value)
     }
