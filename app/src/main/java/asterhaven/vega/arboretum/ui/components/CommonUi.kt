@@ -1,7 +1,6 @@
 package asterhaven.vega.arboretum.ui.components
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -12,10 +11,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -28,7 +25,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.lsystems.IntParameterType
 import asterhaven.vega.arboretum.lsystems.ParameterType
-import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import dev.nesk.akkurate.ValidationResult
 import kotlin.math.roundToInt
 
@@ -38,28 +34,6 @@ fun arbClickableTextStyle() = TextStyle(
     background = MaterialTheme.colorScheme.surfaceVariant,
     textAlign = TextAlign.Center
 )
-
-@Composable
-fun ParameterSetter ( //todo back whence ye came
-    paramWrapper : ArboretumViewModel.ViewModelParamWrapper
-) {
-    val value = paramWrapper.valueSF.collectAsState().value
-    Column {
-        Row(
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ){
-            Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
-            Text(paramWrapper.p.name, Modifier.weight(1.5f))
-            ParamTextField(value, paramWrapper.p.type, paramWrapper::onValueChange)
-        }
-        Slider( value = value,
-                onValueChange = paramWrapper::onValueChange,
-                valueRange = paramWrapper.p.type.range,
-                steps = (if(paramWrapper.p.type is IntParameterType) paramWrapper.p.type.rungsCount() else 0)
-        )
-    }
-}
 
 @Composable
 fun ArbBasicTextField(
@@ -100,7 +74,8 @@ fun <T> ArbDropMenu(selection : T,
             text = name(selection),
             modifier = Modifier.clickable {
                 expanded = !expanded
-            }
+            },
+            style = arbClickableTextStyle()
         )
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             list.forEach {
