@@ -64,7 +64,7 @@ fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit
 }
 
 @Composable
-fun <T> ArbDropMenu(selection : T,
+fun <T> ArbDropMenu(selection : T, //todo everything as LazyColumn
                     onSelect : (T) -> Unit,
                     name : @Composable (T) -> String, list : List<T>,
                     startsExpanded : Boolean = false) {

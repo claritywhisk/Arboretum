@@ -1,6 +1,7 @@
 package asterhaven.vega.arboretum.ui.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
@@ -318,9 +320,9 @@ fun RulesScreen(
                 else Icon(Icons.Default.Warning, contentDescription = "Check item for errors")
             }
         }
+
         Row {
-            Column(modifier = Modifier.width(IntrinsicSize.Min)) {
-                //TODO choose params
+            LazyColumn {
                 fun isInParens() : Boolean {
                     var i = ec - 1
                     while (i in es.indices) when (es[i]) {
@@ -330,28 +332,45 @@ fun RulesScreen(
                     }
                     return false
                 }
-                if(!isInParens()) SymbolSet.standard.symbols.forEach {
-                    DropdownMenuItem(
-                        text = {
-                            Row {
-                                Text(it.symbol + "\t\t\t")
-                                Text(it.desc)
-                            }
-                        },
-                        onClick = {
-                            val parameters = if(it.nParams == 0) "" else {
+                fun menuItem(sym : String, desc : String, onClick : () -> Unit) = item {
+                    Row(
+                        Modifier.clickable { onClick() }
+                    ) {
+                        Text("$sym\t\t\t$desc")
+                    }
+                }
+                fun insertTextAndCursorRight(str : String, r : Int) {
+                    val gap = if(es[ec] == ' ') " " else ""
+                    editingState().updateText(
+                        es.replaceRange(
+                            rangeOfCursorIndexOrWord(),
+                            gap + str + gap
+                        )
+                    )
+                    editingState().updateCursor(ec + r)
+                    formUnvalidated = true
+                }
+
+
+                if(isInParens()) newParams.forEach {
+                    menuItem(it.symbol.value, it.name.value) {
+                        insertTextAndCursorRight(it.symbol.value, it.symbol.value.length)
+                    }
+                }
+                else {
+                    SymbolSet.standard.symbols.forEach {
+                        menuItem(it.symbol, it.desc) {
+                            val parameters = if (it.nParams == 0) "" else {
                                 StringBuilder().apply {
                                     append("(")
                                     repeat(it.nParams - 1) { append(" ,") }
                                     append(" )")
                                 }.toString()
                             }
-                            val s = " " + it.symbol + parameters + " "
-                            editingState().updateText(es.replaceRange(rangeOfCursorIndexOrWord(), s))
-                            editingState().updateCursor(ec + if(it.nParams == 0) 2 else 3)
-                            formUnvalidated = true
+                            val cr = it.symbol.length + if(it.nParams == 0) 0 else 1
+                            insertTextAndCursorRight(it.symbol + parameters, cr)
                         }
-                    )
+                    }
                 }
             }
         }
@@ -458,7 +477,7 @@ fun RulesScreen(
             .verticalScroll(rememberScrollState())
             .pointerInput(Unit) {
                 awaitPointerEventScope {
-                    // Check for clicks outside (by design = unconsumed) to dismiss controls
+                    // Check for clicks outside (by design = unconsumed) to dismiss controls //todo review after LazyColumn
                     while (true) {
                         val event = awaitPointerEvent()
                         if (event.changes.none { it.isConsumed }) {
