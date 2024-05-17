@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -404,41 +403,41 @@ fun RulesScreen(
         }
     }
     @Composable
-        fun <T : RItem> GroupLabeledSection(section : Section,
-                                            c : KClass<T>,
-                                            error : ValidationResult.Failure?,
-                                            items : SnapshotStateList<T>,
-                                            itemName : String,
-                                            itemErrors : SnapshotStateList<ValidationResult.Failure?>,
-                                            itemContent: @Composable (Int, T, @Composable () -> Unit) -> Unit) {
-            var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
-            if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
-                items.forEachIndexed { iItem, item ->
-                    key(item) {
-                        CanShowErrorBelow(error = itemErrors[iItem]) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .consumeClickEventsWhen {
-                                        editingState().let {
-                                            it.section == section && it.row == iItem
-                                        }
-                                    },
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                itemContent(iItem, item) {
-                                    if (myReorderDeleteButtonsVisible) {
-                                        Row(Modifier.align(Alignment.CenterVertically)) {
-                                            ReorderDeleteButtons(items, itemErrors, iItem, itemName)
-                                        }
+    fun <T : RItem> GroupLabeledSection(section : Section,
+                                        c : KClass<T>,
+                                        error : ValidationResult.Failure?,
+                                        items : SnapshotStateList<T>,
+                                        itemName : String,
+                                        itemErrors : SnapshotStateList<ValidationResult.Failure?>,
+                                        itemContent: @Composable (Int, T, @Composable () -> Unit) -> Unit) {
+        var myReorderDeleteButtonsVisible by remember { mutableStateOf(false) }
+        if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
+            items.forEachIndexed { iItem, item ->
+                key(item) {
+                    CanShowErrorBelow(error = itemErrors[iItem]) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .consumeClickEventsWhen {
+                                    editingState().let {
+                                        it.section == section && it.row == iItem
+                                    }
+                                },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            itemContent(iItem, item) {
+                                if (myReorderDeleteButtonsVisible) {
+                                    Row(Modifier.align(Alignment.CenterVertically)) {
+                                        ReorderDeleteButtons(items, itemErrors, iItem, itemName)
                                     }
                                 }
                             }
                         }
-                        if (editingState().row == iItem && editingState().section == section) EditTray()
                     }
+                    if (editingState().row == iItem && editingState().section == section) EditTray()
                 }
             }
+        }
         //Buttons controlling add, reorder/delete rules
         Row(horizontalArrangement = Arrangement.Center, modifier = Modifier
             .fillMaxWidth()
