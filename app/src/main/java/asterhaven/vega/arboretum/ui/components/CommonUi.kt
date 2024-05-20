@@ -36,29 +36,38 @@ fun arbClickableTextStyle() = TextStyle(
 )
 
 @Composable
+fun arbPlainTextStyle() = TextStyle(
+    color = MaterialTheme.colorScheme.onSurface,
+    background = MaterialTheme.colorScheme.surface,
+    textAlign = TextAlign.Center
+)
+
+@Composable
 fun ArbBasicTextField(
     value : String,
     onValueChange : (String) -> Unit,
     modifier: Modifier = Modifier,
+    enabled : Boolean,
     keyboardOptions: KeyboardOptions = KeyboardOptions()
 ) {
     BasicTextField(
         value,
         onValueChange,
         modifier,
-        //Modifier.width(IntrinsicSize.Min)
+        enabled = enabled,
         keyboardOptions = keyboardOptions,
         singleLine = true,
-        textStyle = arbClickableTextStyle()
+        textStyle = if(enabled) arbClickableTextStyle() else arbPlainTextStyle()
     )
 }
 
 @Composable
-fun ParamTextField(value : Float, type : ParameterType, update : (Float) -> Unit) {
+fun ParamTextField(value : Float, type : ParameterType, enabled : Boolean, update : (Float) -> Unit) {
     ArbBasicTextField(
         if(type is IntParameterType) value.roundToInt().toString() else "%.2f".format(value),
         { newVal -> newVal.toFloatOrNull()?.let { update(it) } },
         //Modifier.width(IntrinsicSize.Min), //width(96.dp), todo
+        enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
     )
 }

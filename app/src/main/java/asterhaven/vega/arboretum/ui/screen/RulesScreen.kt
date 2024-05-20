@@ -2,10 +2,13 @@ package asterhaven.vega.arboretum.ui.screen
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -23,7 +26,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -49,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
@@ -76,6 +79,7 @@ import asterhaven.vega.arboretum.ui.components.LabeledSection
 import asterhaven.vega.arboretum.ui.components.ParamTextField
 import asterhaven.vega.arboretum.ui.components.UniqueIdGenerator
 import asterhaven.vega.arboretum.ui.components.arbClickableTextStyle
+import asterhaven.vega.arboretum.ui.components.arbPlainTextStyle
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
 import kotlin.math.max
@@ -154,14 +158,18 @@ fun RulesScreen(
         val updateCursor : (Int) -> Unit = { new : Int -> cursorPos = new }
     }
     val state : HashMap<Int, Holder> = remember { HashMap() }
-    fun nextUIDPairedToHolder(text : MutableState<String>, section : Section, row : Int) : Int
-        = UniqueIdGenerator.nextId().also {
+    fun nextUIDPairedToHolder(text : MutableState<String>, section : Section, row : Int) : Int =
+        UniqueIdGenerator.nextId().also {
             state[it] = Holder(text, section, row)
         }
-    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), Section.NONE, -1) }
+    val noRow = -1
+    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), Section.NONE, noRow) }
     var elementBeingEdited by remember { mutableIntStateOf(idNotEditing) }
     fun editingState() : Holder = state[elementBeingEdited]!!
 
+    var sectionBeingEdited by remember { mutableStateOf(Section.NONE) }
+    var rowBeingEdited by remember { mutableIntStateOf(noRow) }
+    fun isDetailView() = sectionBeingEdited != Section.NONE
     fun tryNewSpecification() {
         val newSpecification = Specification(
             name ="todo",
@@ -197,21 +205,17 @@ fun RulesScreen(
         }
     }
 
-    fun Modifier.consumeClickEventsWhen(predicate : () -> Boolean) = this.pointerInput(Unit) {
-        awaitPointerEventScope {
-            while(true) {
-                val event = awaitPointerEvent(PointerEventPass.Main)
-                if (predicate()) event.changes.forEach { it.consume() }
-            }
-        }
-    }
-    fun Modifier.consumeClickEvents() = this.consumeClickEventsWhen { true }
-
     @Composable
     fun AccursedText(uid : Int, modifier: Modifier) {
         val text = state[uid]!!.text
-        ClickableText(
-            modifier = modifier.padding(8.dp),
+        val mod = modifier.padding(8.dp)
+        if(!isDetailView()) Text(
+            modifier = mod,
+            style = arbPlainTextStyle(),
+            text = text
+        )
+        else ClickableText(
+            modifier = mod,
             style = arbClickableTextStyle(),
             text = buildAnnotatedString {
                 //Deliver the text and cursor/highlight
@@ -253,7 +257,7 @@ fun RulesScreen(
             '(' -> ec - 1..(ec..es.lastIndex).first { es[it] == ')' }
             else -> ec..ec
         }
-        Row(Modifier.consumeClickEvents()) {
+        Row {
             fun moveCursor(x : Int) {
                 val new = (ec + x).coerceIn(es.indices)
                 editingState().updateCursor(new)
@@ -349,8 +353,6 @@ fun RulesScreen(
                     editingState().updateCursor(ec + r)
                     formUnvalidated = true
                 }
-
-
                 if(isInParens()) newParams.forEach {
                     menuItem(it.symbol.value, it.name.value) {
                         insertTextAndCursorRight(it.symbol.value, it.symbol.value.length)
@@ -403,6 +405,45 @@ fun RulesScreen(
         }
     }
     @Composable
+    fun ClickTakingRow(takesClicks : Boolean, section : Section, row : Int, content : @Composable RowScope.() -> Unit) {
+        val mod = Modifier.fillMaxWidth()
+        Row(verticalAlignment = Alignment.CenterVertically,
+            modifier = if(!takesClicks) mod else mod.pointerInput(Unit) {
+                awaitEachGesture {
+                    val down = awaitFirstDown(pass = PointerEventPass.Main)
+                    var isClick = true
+
+                    do { //todo test click
+                        val event = awaitPointerEvent(pass = PointerEventPass.Main)
+                        val anyPositionChange =
+                            event.changes.any { it.positionChange() != androidx.compose.ui.geometry.Offset.Zero }
+                        if (anyPositionChange) {
+                            isClick = false
+                        }
+                    } while (event.changes.any { it.pressed })
+
+                    if (isClick) {
+                        sectionBeingEdited = section
+                        rowBeingEdited = row
+                    }
+                }
+            },
+            content = content
+        )
+    }
+    @Composable
+    fun ItemWithErrorBar(section : Section, row : Int, content : @Composable RowScope.() -> Unit) {
+        CanShowErrorBelow(when(section){
+            Section.AXIOM -> errorAxiom
+            Section.RULES -> errorsProductions[row]
+            Section.SYMBOLS -> errorsSymbolIndividual[row]
+            Section.PARAMS -> errorsParamIndividual[row]
+            else -> errorOverall
+        }) {
+            ClickTakingRow(!isDetailView(), section, row, content)
+        }
+    }
+    @Composable
     fun <T : RItem> GroupLabeledSection(section : Section,
                                         c : KClass<T>,
                                         error : ValidationResult.Failure?,
@@ -414,27 +455,15 @@ fun RulesScreen(
         if(items.isNotEmpty()) LabeledSection(heading[section]!!, error) {
             items.forEachIndexed { iItem, item ->
                 key(item) {
-                    CanShowErrorBelow(error = itemErrors[iItem]) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .consumeClickEventsWhen {
-                                    editingState().let {
-                                        it.section == section && it.row == iItem
-                                    }
-                                },
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            itemContent(iItem, item) {
-                                if (myReorderDeleteButtonsVisible) {
-                                    Row(Modifier.align(Alignment.CenterVertically)) {
-                                        ReorderDeleteButtons(items, itemErrors, iItem, itemName)
-                                    }
+                    ItemWithErrorBar(section, iItem) {
+                        itemContent(iItem, item) {
+                            if (myReorderDeleteButtonsVisible) {
+                                Row(Modifier.align(Alignment.CenterVertically)) {
+                                    ReorderDeleteButtons(items, itemErrors, iItem, itemName)
                                 }
                             }
                         }
                     }
-                    if (editingState().row == iItem && editingState().section == section) EditTray()
                 }
             }
         }
@@ -468,38 +497,171 @@ fun RulesScreen(
             }
         }
     }
+    @Composable
+    fun ItemAxiom() {
+        AccursedTextWrapper(axiom, Section.AXIOM, 0)
+    }
+    @Composable
+    fun RowScope.ItemRule(pr : MutableProduction, i : Int) {
+        AccursedTextWrapper(pr.before, Section.RULES, i)
+        Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
+        AccursedTextWrapper(
+            pr.after, Section.RULES, i, Modifier
+                .weight(1f)
+                .width(IntrinsicSize.Max)
+        )
+    }
+    @Composable
+    fun ItemSym(s : MutableSymbol, iSym : Int, del : @Composable () -> Unit = {}) {
+        fun isAliasSymbol() = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
+        var isOptionsExpand by remember { mutableStateOf(false) }
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
+                if (isAliasSymbol()) {
+                    Text("=")
+                    AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
+                }
+                ArbBasicTextField(s.desc.value, onValueChange = { v -> s.desc.value = v },
+                    Modifier.weight(.1f), enabled = isDetailView()
+                )
+                del()
+            }
+            if (isDetailView()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("Alias")
+                    Switch(isAliasSymbol(), { b ->
+                        if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
+                        else if (!isAliasSymbol()) s.aliases.value = "…"
+                    })
+                    Text("# Args")
+                    (0..3).forEach { n ->
+                        RadioButton(selected = s.nParams.intValue == n, onClick = {
+                            when (val np = s.nParams.intValue) {
+                                in 0 until n -> { //add, sparing existing
+                                    val sb = StringBuilder()
+                                    sb.append(s.symbol.value.let {
+                                        if (np == 0) "$it(" else it.substring(
+                                            0,
+                                            it.lastIndex
+                                        ) //remove )
+                                    })
+                                    repeat(n - np - 1) { sb.append(" ,") }
+                                    sb.append(" )")
+                                    s.symbol.value = sb.toString()
+                                }
+
+                                in n..n -> {} //no action
+                                else -> { //cut
+                                    fun ans(): String {
+                                        var comma = n - 1
+                                        s.symbol.value.let {
+                                            for (i in it.indices) when (it[i]) {
+                                                '(' -> if (n == 0) return it.substring(0, i)
+                                                ',' -> if (--comma == 0) return it.substring(
+                                                    0,
+                                                    i
+                                                ) + ")"
+                                            }
+                                            if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args //todo flagged
+                                            return it
+                                        }
+                                    }
+                                    s.symbol.value = ans()
+                                }
+                            }
+                            s.nParams.intValue = n
+                        })
+                    }
+                }
+            }
+        }
+    }
+    @Composable
+    fun ItemParam(p : MutableParam, iPara : Int, del : @Composable () -> Unit = {}) {
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
+                ArbBasicTextField(p.name.value, { s -> p.name.value = s }, Modifier.weight(1.5f),
+                    enabled = isDetailView()
+                )
+                ParamTextField(p.initialValue.floatValue, p.type.value, isDetailView()) { newFloatVal ->
+                    p.initialValue.floatValue = newFloatVal
+                }
+                del()
+            }
+            if(isDetailView()) Row(verticalAlignment = Alignment.CenterVertically) {
+                ArbDropMenu( //todo as standard menu
+                    selection = p.type,
+                    onSelect = { pt -> p.type.value = pt as ParameterType },
+                    name = { pt ->
+                        when (pt) {
+                            is MenuPT -> pt.name
+                            is IntParameterType -> stringResource(R.string.rules_param_custom_int)
+                            else -> stringResource(R.string.rules_param_custom)
+                        }
+                    },
+                    list = MenuPT.list
+                )
+                val t = p.type.value
+                val isConstant = t.range.start == t.range.endInclusive
+
+                @Composable
+                fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t, isDetailView()) { v ->
+                    val l = min(v, otherEnd)
+                    val r = max(v, otherEnd)
+                    p.type.value = when {
+                        isConstant -> ParameterType(v, v)
+                        t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
+                        else -> ParameterType(l, r)
+                    }
+                }
+                RangeTF(t.range.endInclusive)
+                if (!isConstant) {
+                    Text(stringResource(R.string.rules_params_range_to))
+                    RangeTF(t.range.start)
+                }
+            }
+        }
+    }
+
     //BEGIN Content of RulesScreen Composable
-    Column(
+    if(isDetailView()) {
+        Column {
+            Row(Modifier.clickable {
+                sectionBeingEdited = Section.NONE
+                rowBeingEdited = noRow
+            }) {
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                Text("Edit " + when(sectionBeingEdited) {
+                    Section.RULES -> stringResource(R.string.rules_item_rule)
+                    Section.SYMBOLS -> stringResource(R.string.rules_item_symbol)
+                    Section.PARAMS -> stringResource(R.string.rules_item_param)
+                    else -> stringResource(R.string.rules_label_axiom)
+                })
+            }
+            ItemWithErrorBar(sectionBeingEdited, rowBeingEdited) {
+                val r = rowBeingEdited
+                when(sectionBeingEdited) {
+                    Section.RULES -> ItemRule(productionRules[r], r)
+                    Section.SYMBOLS -> ItemSym(symbols[r], r)
+                    Section.PARAMS -> ItemParam(newParams[r], r)
+                    else -> ItemAxiom()
+                }
+            }
+            if(elementBeingEdited != idNotEditing) EditTray()
+        }
+    }
+    else Column(
         modifier = Modifier
             .padding(16.dp)
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .pointerInput(Unit) {
-                awaitPointerEventScope {
-                    // Check for clicks outside (by design = unconsumed) to dismiss controls //todo review after LazyColumn
-                    while (true) {
-                        val event = awaitPointerEvent()
-                        if (event.changes.none { it.isConsumed }) {
-                            tryRow()
-                            tryNewSpecification()
-                            elementBeingEdited = idNotEditing
-                        }
-                    }
-                }
-            }
     ) {
         LabeledSection(stringResource(R.string.rules_label_axiom), errorAxiom) {
-            val editingAxiom = editingState().section == Section.AXIOM
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .consumeClickEventsWhen { editingAxiom }
-                ) {
-                    AccursedTextWrapper(axiom, Section.AXIOM, 0)
-                }
+            ItemWithErrorBar(Section.AXIOM, 0) {
+                ItemAxiom()
             }
-            if (editingAxiom) EditTray()
         }
         GroupLabeledSection(
             section = Section.RULES,
@@ -509,17 +671,9 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_rule),
             itemErrors = errorsProductions
         ) { iRule, pr, del ->
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AccursedTextWrapper(pr.before, Section.RULES, iRule)
-                    Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-                    AccursedTextWrapper(
-                        pr.after, Section.RULES, iRule, Modifier
-                            .weight(1f)
-                            .width(IntrinsicSize.Max)
-                    )
-                    del()
-                }
+            ItemWithErrorBar(Section.RULES, iRule) {
+                ItemRule(pr, iRule)
+                del()
             }
         }
         GroupLabeledSection(
@@ -530,74 +684,8 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_symbol),
             itemErrors = errorsSymbolIndividual
         ) { iSym, s, del ->
-            fun isAliasSymbol() = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
-            var isOptionsExpand by remember { mutableStateOf(false) }
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
-                    if (isAliasSymbol()) {
-                        Text("=")
-                        AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
-                    }
-                    ArbBasicTextField(s.desc.value, onValueChange = { v -> s.desc.value = v },
-                        Modifier.weight(.1f)
-                    )
-                    IconButton(enabled = true, onClick = { isOptionsExpand = !isOptionsExpand }) {
-                        Icon(
-                            Icons.Default.MoreVert,
-                            contentDescription = "Options for symbol type and arguments"
-                        )
-                    }
-                    del()
-                }
-                if (isOptionsExpand) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Substitution")
-                        Switch(isAliasSymbol(), { b ->
-                            if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
-                            else if (!isAliasSymbol()) s.aliases.value = "…"
-                        })
-                        Text("# Arguments")
-                        (0..3).forEach { n ->
-                            RadioButton(selected = s.nParams.intValue == n, onClick = {
-                                when (val np = s.nParams.intValue) {
-                                    in 0 until n -> { //add, sparing existing
-                                        val sb = StringBuilder()
-                                        sb.append(s.symbol.value.let {
-                                            if (np == 0) "$it(" else it.substring(
-                                                0,
-                                                it.lastIndex
-                                            ) //remove )
-                                        })
-                                        repeat(n - np - 1) { sb.append(" ,") }
-                                        sb.append(" )")
-                                        s.symbol.value = sb.toString()
-                                    }
-
-                                    in n..n -> {} //no action
-                                    else -> { //cut
-                                        fun ans(): String {
-                                            var comma = n - 1
-                                            s.symbol.value.let {
-                                                for (i in it.indices) when (it[i]) {
-                                                    '(' -> if (n == 0) return it.substring(0, i)
-                                                    ',' -> if (--comma == 0) return it.substring(
-                                                        0,
-                                                        i
-                                                    ) + ")"
-                                                }
-                                                if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args
-                                                return it
-                                            }
-                                        }
-                                        s.symbol.value = ans()
-                                    }
-                                }
-                                s.nParams.intValue = n
-                            })
-                        }
-                    }
-                }
+            ItemWithErrorBar(Section.SYMBOLS, iSym) {
+                ItemSym(s, iSym, del)
             }
         }
         GroupLabeledSection(
@@ -608,47 +696,8 @@ fun RulesScreen(
             itemName = stringResource(R.string.rules_item_param),
             itemErrors = errorsParamIndividual
         ) { iPara, p, del ->
-            Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
-                    ArbBasicTextField(p.name.value, { s -> p.name.value = s }, Modifier.weight(1.5f))
-                    ParamTextField(p.initialValue.floatValue, p.type.value) { newFloatVal ->
-                        p.initialValue.floatValue = newFloatVal
-                    }
-                    del()
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ArbDropMenu(
-                        selection = p.type,
-                        onSelect = { pt -> p.type.value = pt as ParameterType },
-                        name = { pt ->
-                            when (pt) {
-                                is MenuPT -> pt.name
-                                is IntParameterType -> stringResource(R.string.rules_param_custom_int)
-                                else -> stringResource(R.string.rules_param_custom)
-                            }
-                        },
-                        list = MenuPT.list
-                    )
-                    val t = p.type.value
-                    val isConstant = t.range.start == t.range.endInclusive
-
-                    @Composable
-                    fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t) { v ->
-                        val l = min(v, otherEnd)
-                        val r = max(v, otherEnd)
-                        p.type.value = when {
-                            isConstant -> ParameterType(v, v)
-                            t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
-                            else -> ParameterType(l, r)
-                        }
-                    }
-                    RangeTF(t.range.endInclusive)
-                    if (!isConstant) {
-                        Text(stringResource(R.string.rules_params_range_to))
-                        RangeTF(t.range.start)
-                    }
-                }
+            ItemWithErrorBar(Section.PARAMS, iPara) {
+                ItemParam(p, iPara, del)
             }
         }
     }

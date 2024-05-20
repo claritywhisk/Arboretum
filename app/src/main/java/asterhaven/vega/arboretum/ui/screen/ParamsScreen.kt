@@ -70,7 +70,7 @@ fun ParameterSetter (
         ){
             Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
             Text(paramWrapper.p.name, Modifier.weight(1.5f))
-            ParamTextField(value, paramWrapper.p.type, paramWrapper::onValueChange)
+            ParamTextField(value, paramWrapper.p.type, true, paramWrapper::onValueChange)
         }
         Slider( value = value,
             onValueChange = paramWrapper::onValueChange,
