@@ -537,33 +537,31 @@ fun RulesScreen(
                     Text("# Args")
                     (0..3).forEach { n ->
                         RadioButton(selected = s.nParams.intValue == n, onClick = {
-                            when (val np = s.nParams.intValue) {
+                            when (val b4 = s.nParams.intValue) {
                                 in 0 until n -> { //add, sparing existing
                                     val sb = StringBuilder()
                                     sb.append(s.symbol.value.let {
-                                        if (np == 0) "$it(" else it.substring(
-                                            0,
-                                            it.lastIndex
-                                        ) //remove )
+                                        if (b4 == 0) "$it( "
+                                        else it.substring(0, it.lastIndex) //remove )
                                     })
-                                    repeat(n - np - 1) { sb.append(" ,") }
-                                    sb.append(" )")
+                                    val commas = n - b4 - if(b4 == 0) 1 else 0
+                                    repeat(commas) { sb.append(", ") }
+                                    sb.append(")")
                                     s.symbol.value = sb.toString()
                                 }
-
                                 in n..n -> {} //no action
-                                else -> { //cut
+                                else -> { //delete from end
                                     fun ans(): String {
-                                        var comma = n - 1
+                                        var commasAccepted = n - 1
                                         s.symbol.value.let {
                                             for (i in it.indices) when (it[i]) {
                                                 '(' -> if (n == 0) return it.substring(0, i)
-                                                ',' -> if (--comma == 0) return it.substring(
+                                                ',' -> if (commasAccepted-- == 0) return it.substring(
                                                     0,
                                                     i
                                                 ) + ")"
                                             }
-                                            if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args //todo flagged
+                                            if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args
                                             return it
                                         }
                                     }
