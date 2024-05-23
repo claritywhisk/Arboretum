@@ -1,17 +1,21 @@
 package asterhaven.vega.arboretum.ui.screen
 
 import android.widget.Toast
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,6 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -63,6 +68,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
@@ -206,7 +212,7 @@ fun RulesScreen(
     var rowBeingEdited by remember { mutableIntStateOf(noRow) }
 
     val idNotEditing = remember { textField("") }
-    var elementBeingEdited : MutableState<TextFieldValue> = remember { idNotEditing }
+    var elementBeingEdited : MutableState<MutableState<TextFieldValue>> = remember { mutableStateOf(idNotEditing) }
 
     fun isDetailView() = sectionBeingEdited != Section.NONE
 
@@ -252,34 +258,35 @@ fun RulesScreen(
     }
 
     @Composable
-    fun EccentricTextField(textFieldValue: MutableState<TextFieldValue>, modifier: Modifier = Modifier) {
+    fun EccentricTextField(msTextField: MutableState<TextFieldValue>, modifier: Modifier = Modifier) {
         val focusRequester = remember { FocusRequester() } //todo any use?
         val interactionSource = remember { MutableInteractionSource() }
         val keyboardController = LocalSoftwareKeyboardController.current
         val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
+        var textLayoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
         val mod = modifier
             .padding(8.dp)
             .onFocusChanged { focusState ->
-                if (focusState.isFocused) elementBeingEdited = textFieldValue
+                if (focusState.isFocused) elementBeingEdited.value = msTextField
             }
             .focusRequester(focusRequester)
         BasicTextField(
-            value = textFieldValue.value,
+            value = msTextField.value,
             onValueChange = { newValue : TextFieldValue ->
                 if(!newValue.selection.collapsed) {
                     //Todo smart selection TextRange
                 }
                 else {
-                    val ci = newValue.selection.min
+                    val ci = newValue.selection.min.coerceAtMost(newValue.text.indices.last)
                     val nextI = (ci + 1).coerceAtMost(newValue.text.indices.last)
-                    //rest on the opening paren of each parametric word
+                    //rest on the opening paren of each parametric word todo review
                     val newCursor = when {
                         newValue.text[nextI] == '(' -> nextI
                         newValue.text[ci] == ',' -> ci-1
                         newValue.text[ci] == ')' -> ci-1
                         else -> ci
                     }
-                    textFieldValue.value = TextFieldValue(newValue.text, TextRange(newCursor, newCursor))
+                    msTextField.value = TextFieldValue(newValue.text, TextRange(newCursor, newCursor))
                 }
             },
             modifier = mod,
@@ -290,37 +297,63 @@ fun RulesScreen(
             visualTransformation = { annoStr : AnnotatedString ->
                 TransformedText(buildAnnotatedString {
                     //Deliver the text and cursor/highlight
+                    append(annoStr)
                     val t = annoStr.text
-                    append(t)
-                    if(isDetailView()) {
-                        val c = textFieldValue.value.selection.min
+                    if(elementBeingEdited.value === msTextField
+                        && !msTextField.value.selection.collapsed) {
+                        val c = msTextField.value.selection.min
                         if (c in t.indices) {
                             if (t[c] == '(') {
                                 addStyle(sStyle, c - 1, c + 1)
                                 val iRightParen = (c..t.lastIndex).first { t[it] == ')' }
                                 addStyle(sStyle, iRightParen, iRightParen + 1)
-                            } else addStyle(sStyle, c, c + 1)
+                            } else addStyle(sStyle, c, msTextField.value.selection.max)
                         }
                     }
                 }, OffsetMapping.Identity)
             },
-            interactionSource = interactionSource,//todo?
-            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
+            interactionSource = interactionSource,
             keyboardActions = KeyboardActions(
                 onAny = {
                     keyboardController?.hide()
                 }
-            )
+            ),
+            onTextLayout = { layoutResult ->
+                textLayoutResult = layoutResult
+            },
+            decorationBox = { innerTextField ->
+                Box {
+                    innerTextField()
+                    val cl = msTextField.value.selection.min
+                    if (elementBeingEdited === msTextField &&
+                        cl == msTextField.value.value.selection.max) {
+                        textLayoutResult?.let { layoutResult ->
+                            val cursorOffset = layoutResult.getCursorRect(cl)
+                            val cursorHeight = layoutResult.getLineForOffset(cl).let {
+                                layoutResult.getLineBottom(it) - layoutResult.getLineTop(it)
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .background(Color.Green)
+                                    .width(1.dp)
+                                    .height(18.dp) //todo var
+                                    .offset(x = cursorOffset.left.dp, y = cursorOffset.top.dp) // Adjust as needed
+                            )
+                        }
+                    }
+                }
+            }
         )
     }
     @Composable
     fun EditTray() {
         //todo depending on section and specific field
-        val s = elementBeingEdited.value.text
-        val cl = elementBeingEdited.value.selection.min //cursor
-        val cr = elementBeingEdited.value.selection.max
+        val tfv = elementBeingEdited.value.value
+        val s = tfv.text
+        val cl = tfv.selection.min //cursor
+        val cr = tfv.selection.max
         fun updateCursor(l : Int, r : Int) {
-            elementBeingEdited.value = TextFieldValue(s, TextRange(l, r))
+            elementBeingEdited.value.value = TextFieldValue(s, TextRange(l, r))
         }
         fun cursedRangeInclusive() : IntRange = cl..
                 if(s[cr - 1] != '(') cr - 1
@@ -355,8 +388,8 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
             //delete button in edit tray
-            IconButton(enabled = !elementBeingEdited.value.selection.collapsed, onClick = {
-                elementBeingEdited.value = TextFieldValue(
+            IconButton(enabled = !elementBeingEdited.value.value.selection.collapsed, onClick = {
+                elementBeingEdited.value.value = TextFieldValue(
                     s.removeRange(cursedRangeInclusive()),
                     TextRange(cl, cl)
                 )
@@ -406,7 +439,7 @@ fun RulesScreen(
                     }
                 }
                 fun insertTextAndCursorRight(str : String, right : Int = str.length) {
-                    elementBeingEdited.value = TextFieldValue(
+                    elementBeingEdited.value.value = TextFieldValue(
                         s.replaceRange(cursedRangeInclusive(), str),
                         (cl + right).let { TextRange(it, it) }
                     )
@@ -688,6 +721,7 @@ fun RulesScreen(
             Row(Modifier.clickable {
                 sectionBeingEdited = Section.NONE
                 rowBeingEdited = noRow
+                elementBeingEdited.value = idNotEditing
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 Text("Edit " + when(sectionBeingEdited) {
@@ -706,7 +740,7 @@ fun RulesScreen(
                     else -> ItemAxiom()
                 }
             }
-            if(elementBeingEdited != idNotEditing) EditTray()
+            if(elementBeingEdited.value != idNotEditing) EditTray()
         }
     }
     else Column(

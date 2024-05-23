@@ -18,7 +18,7 @@ object SpecificationRegexAndValidation {
     private const val rgxLWord = "(.)([(](.*?)[)])?" // group 1 is symbol, group 3 is param
     val patWord by lazy { Pattern.compile(rgxLWord) }
 
-    private const val validRawSentence = " ($rgxLWord )*"
+    private const val validRawSentence = "($rgxLWord)*"  //" ($rgxLWord )*"
     private val rgxValidRawSentence = Regex(validRawSentence)
 
     val validateSpecification by lazy {

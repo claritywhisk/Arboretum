@@ -8,8 +8,8 @@ sealed interface LSymbol {
     val nParams: Int
     val desc: String
     companion object {
-        val standardSymbolLookup : HashMap<String, out LSymbol> by lazy { _standardSymbolLookup }
-        private val _standardSymbolLookup = HashMap<String, BasicLSymbol>()
+        val standardSymbolLookup : LinkedHashMap<String, out LSymbol> by lazy { _standardSymbolLookup }
+        private val _standardSymbolLookup = LinkedHashMap<String, BasicLSymbol>()
         init { listOf(
             BasicLSymbol("F", 1, "Forward", LWord.Forward::class),
             BasicLSymbol("f", 1, "Forward, no draw", LWord.ForwardNoDraw::class),

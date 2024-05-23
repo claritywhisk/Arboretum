@@ -93,7 +93,6 @@ fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification {
             val s = result.violations.joinToString { cvs -> "  - ${cvs.path}: ${cvs.message}" }
             throw IllegalArgumentException("Systems.kt validation \n$s")
         }
-
         is ValidationResult.Success -> {}
     }
     return spec
