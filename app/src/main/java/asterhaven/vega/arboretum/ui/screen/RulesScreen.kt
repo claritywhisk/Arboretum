@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -63,6 +64,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -73,6 +75,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
@@ -327,23 +330,28 @@ fun RulesScreen(
             onTextLayout = { layoutResult ->
                 textLayoutResult = layoutResult
             },
-            decorationBox = { innerTextField ->
+            decorationBox = { innerTextField -> //Cursor
                 Box {
                     innerTextField()
-                    val cl = msTextField.value.selection.min
+                    val cl = msTextField.value.selection.start
                     if (idBeingEdited.value === msTextField &&
-                        cl == msTextField.value.selection.max) {
+                        cl == msTextField.value.selection.end) {
                         textLayoutResult?.let { layoutResult ->
                             val cursorOffset = layoutResult.getCursorRect(cl)
                             val cursorHeight = layoutResult.getLineForOffset(cl).let {
                                 layoutResult.getLineBottom(it) - layoutResult.getLineTop(it)
                             }
+                            @Composable
+                            fun Float.toDp(): Dp = (this / LocalDensity.current.density).dp
                             Box(
                                 modifier = Modifier
+                                    .offset(
+                                        x = cursorOffset.left.toDp(),
+                                        y = cursorOffset.top.toDp()
+                                    )
                                     .background(Color.Green)
                                     .width(1.dp)
                                     .height(18.dp) //todo var
-                                    .offset(x = cursorOffset.left.dp, y = cursorOffset.top.dp) // Adjust as needed
                             )
                         }
                     }
@@ -381,7 +389,7 @@ fun RulesScreen(
                 if(cl < cr) updateCursor(cr, cr)
                 else when {
                     s.lastIndex >= cr + 2 && s[cr + 2] == '(' -> updateCursor(cl, cr + 2)
-                    s[cr + 1] in listOf(',',')') -> updateCursor(cl + 1, cr + 1)
+                    s[cr] in listOf(',',')') -> updateCursor(cl + 1, cr + 1)
                     else -> { //check for 2-character symbol
                         if(cr + 2 <= s.length && s.substring(cl, cr + 2).intern() in symbolsWithArgsInRow())
                             updateCursor(cl, cr + 2)

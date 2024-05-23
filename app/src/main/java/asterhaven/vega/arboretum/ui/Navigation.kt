@@ -36,7 +36,7 @@ fun ArboretumApp(
     viewModel: ArboretumViewModel,
     navController: NavHostController = rememberNavController()
 ) {
-    val startTab = ArboretumScreen.Parameters
+    val startTab = ArboretumScreen.Rules
     var currentScreen by remember { mutableStateOf(startTab) }
 
     fun navigateTo(newScreen : ArboretumScreen) {
