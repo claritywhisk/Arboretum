@@ -59,7 +59,6 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -212,7 +211,14 @@ fun RulesScreen(
     var rowBeingEdited by remember { mutableIntStateOf(noRow) }
 
     val idNotEditing = remember { textField("") }
-    var elementBeingEdited : MutableState<MutableState<TextFieldValue>> = remember { mutableStateOf(idNotEditing) }
+    var idBeingEdited : MutableState<MutableState<TextFieldValue>> = remember { mutableStateOf(idNotEditing) }
+    fun setIDBeingEdited(element : MutableState<TextFieldValue>) {
+        idBeingEdited.value = element
+    }
+    fun updateText(textFieldValue: TextFieldValue) {
+        idBeingEdited.value.value = textFieldValue
+    }
+    fun currentTextFieldValue() = idBeingEdited.value.value
 
     fun isDetailView() = sectionBeingEdited != Section.NONE
 
@@ -267,7 +273,7 @@ fun RulesScreen(
         val mod = modifier
             .padding(8.dp)
             .onFocusChanged { focusState ->
-                if (focusState.isFocused) elementBeingEdited.value = msTextField
+                if (focusState.isFocused) setIDBeingEdited(msTextField)
             }
             .focusRequester(focusRequester)
         BasicTextField(
@@ -299,7 +305,7 @@ fun RulesScreen(
                     //Deliver the text and cursor/highlight
                     append(annoStr)
                     val t = annoStr.text
-                    if(elementBeingEdited.value === msTextField
+                    if(idBeingEdited.value === msTextField
                         && !msTextField.value.selection.collapsed) {
                         val c = msTextField.value.selection.min
                         if (c in t.indices) {
@@ -325,8 +331,8 @@ fun RulesScreen(
                 Box {
                     innerTextField()
                     val cl = msTextField.value.selection.min
-                    if (elementBeingEdited === msTextField &&
-                        cl == msTextField.value.value.selection.max) {
+                    if (idBeingEdited.value === msTextField &&
+                        cl == msTextField.value.selection.max) {
                         textLayoutResult?.let { layoutResult ->
                             val cursorOffset = layoutResult.getCursorRect(cl)
                             val cursorHeight = layoutResult.getLineForOffset(cl).let {
@@ -348,13 +354,11 @@ fun RulesScreen(
     @Composable
     fun EditTray() {
         //todo depending on section and specific field
-        val tfv = elementBeingEdited.value.value
+        val tfv = currentTextFieldValue()
         val s = tfv.text
         val cl = tfv.selection.min //cursor
         val cr = tfv.selection.max
-        fun updateCursor(l : Int, r : Int) {
-            elementBeingEdited.value.value = TextFieldValue(s, TextRange(l, r))
-        }
+        fun updateCursor(l : Int, r : Int) = updateText(TextFieldValue(s, TextRange(l, r)))
         fun cursedRangeInclusive() : IntRange = cl..
                 if(s[cr - 1] != '(') cr - 1
                 else (cr until s.length).first { s[it] == ')' }
@@ -388,11 +392,11 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
             //delete button in edit tray
-            IconButton(enabled = !elementBeingEdited.value.value.selection.collapsed, onClick = {
-                elementBeingEdited.value.value = TextFieldValue(
+            IconButton(enabled = !currentTextFieldValue().selection.collapsed, onClick = {
+                updateText(TextFieldValue(
                     s.removeRange(cursedRangeInclusive()),
                     TextRange(cl, cl)
-                )
+                ))
                 formUnvalidated = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
@@ -439,10 +443,10 @@ fun RulesScreen(
                     }
                 }
                 fun insertTextAndCursorRight(str : String, right : Int = str.length) {
-                    elementBeingEdited.value.value = TextFieldValue(
+                    updateText(TextFieldValue(
                         s.replaceRange(cursedRangeInclusive(), str),
                         (cl + right).let { TextRange(it, it) }
-                    )
+                    ))
                     formUnvalidated = true
                 }
                 if(isInParens()) newParams.forEach {
@@ -721,7 +725,7 @@ fun RulesScreen(
             Row(Modifier.clickable {
                 sectionBeingEdited = Section.NONE
                 rowBeingEdited = noRow
-                elementBeingEdited.value = idNotEditing
+                setIDBeingEdited(idNotEditing)
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 Text("Edit " + when(sectionBeingEdited) {
@@ -740,7 +744,7 @@ fun RulesScreen(
                     else -> ItemAxiom()
                 }
             }
-            if(elementBeingEdited.value != idNotEditing) EditTray()
+            if(idBeingEdited.value !== idNotEditing) EditTray()
         }
     }
     else Column(
