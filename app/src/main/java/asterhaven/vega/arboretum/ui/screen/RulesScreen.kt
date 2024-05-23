@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -15,7 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.ClickableText
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -49,13 +51,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
@@ -77,7 +89,6 @@ import asterhaven.vega.arboretum.ui.components.ArbDropMenu
 import asterhaven.vega.arboretum.ui.components.CanShowErrorBelow
 import asterhaven.vega.arboretum.ui.components.LabeledSection
 import asterhaven.vega.arboretum.ui.components.ParamTextField
-import asterhaven.vega.arboretum.ui.components.UniqueIdGenerator
 import asterhaven.vega.arboretum.ui.components.arbClickableTextStyle
 import asterhaven.vega.arboretum.ui.components.arbPlainTextStyle
 import dev.nesk.akkurate.ValidationResult
@@ -89,30 +100,66 @@ import kotlin.reflect.KClass
 enum class Section {
     NONE, AXIOM, RULES, SYMBOLS, PARAMS
 }
+
 sealed interface RItem
-private class MutableProduction(before : String, after : String) : RItem {
-    val before = mutableStateOf(before)
-    val after = mutableStateOf(after)
-    fun make() : LProduction = LProduction(before.value, after.value)
+private fun textField(s : String) : MutableState<TextFieldValue> =
+    mutableStateOf(TextFieldValue(s))
+private class MutableAxiom(initial : String) : RItem {
+    val initial : MutableState<TextFieldValue> = textField(initial)
 }
-private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String = NOT_ALIAS_SYMBOL) : RItem {
-    val symbol = mutableStateOf(sym)
+private class MutableProduction(before : String, after : String) : RItem {
+    val before = textField(before)
+    val after = textField(after)
+    fun make() : LProduction = LProduction(before.value.text, after.value.text)
+}
+private interface NamesCommonSymbol : RItem {
+    val symbol : MutableState<TextFieldValue>
+}
+private class MutableSymbol(sym : String, np : Int, desc : String, aliasFor : String = NOT_ALIAS_SYMBOL) : RItem, NamesCommonSymbol {
+    override val symbol = textField(sym)
     val nParams = mutableIntStateOf(np)
-    val desc = mutableStateOf(desc)
-    val aliases = mutableStateOf(aliasFor)
+    val desc = mutableStateOf(desc) //todo consistent textField()?
+    val aliases = textField(aliasFor)
     companion object {
         const val NOT_ALIAS_SYMBOL = ""
     }
     fun make() : LSymbol =
-        if(aliases.value == NOT_ALIAS_SYMBOL) IntermediateSymbol(symbol.value, nParams.intValue, desc.value)
-        else CustomSymbol(symbol.value, nParams.intValue, desc.value, aliases.value)
+        if(aliases.value.text == NOT_ALIAS_SYMBOL) IntermediateSymbol(symbol.value.text, nParams.intValue, desc.value)
+        else CustomSymbol(symbol.value.text, nParams.intValue, desc.value, aliases.value.text)
 }
-private class MutableParam(sym: String, name: String, type: ParameterType, initialValue: Float) : RItem {
-    val symbol = mutableStateOf(sym)
+private class MutableParam(sym: String, name: String, type: ParameterType, initialValue: Float) : RItem, NamesCommonSymbol {
+    override val symbol = textField(sym)
     val name = mutableStateOf(name)
     val type = mutableStateOf(type)
     val initialValue = mutableFloatStateOf(initialValue)
-    fun make() : LParameter = LParameter(symbol.value, name.value, type.value, initialValue.floatValue)
+    fun make() : LParameter = LParameter(symbol.value.text, name.value, type.value, initialValue.floatValue)
+}
+val commonSymbols : MutableList<String> = mutableListOf<String>().apply {
+    SymbolSet.standard.symbols.forEach { add(it.symbol) }
+}
+private class SnapshotStateListWrapper<T : NamesCommonSymbol>(private val delegate: SnapshotStateList<T>)
+    : MutableList<T> by delegate {
+    override fun add(element: T): Boolean {
+        commonSymbols.add(element.symbol.value.text)
+        return delegate.add(element)
+    }
+    override fun remove(element: T): Boolean {
+        commonSymbols.remove(element.symbol.value.text)
+        return delegate.remove(element)
+    }
+}
+private fun extractArgs(s : String) : List<String> {
+    val ret = mutableListOf<String>()
+    var l = s.indices.firstOrNull { s[it] == '(' } ?: return ret
+    var r = l + 1
+    while(s[r] != ')'){
+        if(s[r] == ',') {
+            ret.add(s.substring(l + 1, r))
+            l = r
+        }
+        r++
+    }
+    return ret
 }
 
 @Composable
@@ -128,13 +175,16 @@ fun RulesScreen(
     heading[Section.SYMBOLS] = stringResource(R.string.rules_label_custom_symbols)
     heading[Section.PARAMS] = stringResource(R.string.rules_label_parameters)
 
-    val axiom = remember { mutableStateOf(baseSpecification.initial) }
+    val axiom = remember { MutableAxiom(baseSpecification.initial) }
     val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
         baseSpecification.productions.forEach { add(MutableProduction(it.before, it.after)) }
     } }
-    val symbols = remember { mutableStateListOf<MutableSymbol>() }
-    val newParams = remember { mutableStateListOf<MutableParam>().apply {
-        baseSpecification.params.forEach { add(MutableParam(it.symbol, it.name, it.type, it.initialValue)) }
+    val symbols = remember { SnapshotStateListWrapper(mutableStateListOf<MutableSymbol>()) } //todo load symbols?
+    val newParams = remember { SnapshotStateListWrapper(mutableStateListOf<MutableParam>()).apply {
+        baseSpecification.params.forEach {
+            add(MutableParam(it.symbol, it.name, it.type, it.initialValue))
+            commonSymbols.add(it.symbol)
+        }
     } }
 
     var formUnvalidated by remember { mutableStateOf(false) }
@@ -151,29 +201,25 @@ fun RulesScreen(
     val errorsParamIndividual   = remember { errsOK(newParams.size) }
     var errorParams             by remember { errOK() }
 
-    class Holder(text : MutableState<String>, val section : Section, val row : Int) {
-        val text by text
-        var cursorPos by mutableIntStateOf(0)
-        val updateText = { new : String -> text.value = new }
-        val updateCursor : (Int) -> Unit = { new : Int -> cursorPos = new }
-    }
-    val state : HashMap<Int, Holder> = remember { HashMap() }
-    fun nextUIDPairedToHolder(text : MutableState<String>, section : Section, row : Int) : Int =
-        UniqueIdGenerator.nextId().also {
-            state[it] = Holder(text, section, row)
-        }
-    val noRow = -1
-    val idNotEditing = remember { nextUIDPairedToHolder(mutableStateOf(""), Section.NONE, noRow) }
-    var elementBeingEdited by remember { mutableIntStateOf(idNotEditing) }
-    fun editingState() : Holder = state[elementBeingEdited]!!
-
     var sectionBeingEdited by remember { mutableStateOf(Section.NONE) }
+    val noRow = -1
     var rowBeingEdited by remember { mutableIntStateOf(noRow) }
+
+    val idNotEditing = remember { textField("") }
+    var elementBeingEdited : MutableState<TextFieldValue> = remember { idNotEditing }
+
     fun isDetailView() = sectionBeingEdited != Section.NONE
+
+    fun symbolsWithArgsInRow() : List<String> = commonSymbols + when (sectionBeingEdited) {
+        Section.RULES   -> extractArgs(productionRules[rowBeingEdited].before.value.text)
+        Section.SYMBOLS -> extractArgs(symbols[rowBeingEdited].symbol.value.text)
+        else -> listOf()
+    }
+
     fun tryNewSpecification() {
         val newSpecification = Specification(
             name ="todo",
-            initial = axiom.value,
+            initial = axiom.initial.value.text,
             productions = productionRules.toList().map { it.make() } ,
             params = newParams.toList().map { it.make() },
             constants = HashMap<String, Float>().apply {
@@ -195,9 +241,9 @@ fun RulesScreen(
             is ValidationResult.Success -> null
             is ValidationResult.Failure -> result
         }
-        val r = editingState().row
-        when(editingState().section){
-            Section.AXIOM -> errorAxiom = valRes(axiom.value, SpecificationRegexAndValidation.validateAxiom)
+        val r = rowBeingEdited
+        when(sectionBeingEdited){
+            Section.AXIOM -> errorAxiom = valRes(axiom.initial.value.text, SpecificationRegexAndValidation.validateAxiom)
             Section.RULES -> errorsProductions[r] = valRes(productionRules[r].make(), SpecificationRegexAndValidation.validateProduction)
             Section.SYMBOLS -> errorsSymbolIndividual[r] = valRes(symbols[r].make(), SpecificationRegexAndValidation.validateSymbol)
             Section.PARAMS -> errorsParamIndividual[r] = valRes(newParams[r].make(), SpecificationRegexAndValidation.validateParameter)
@@ -206,97 +252,114 @@ fun RulesScreen(
     }
 
     @Composable
-    fun AccursedText(uid : Int, modifier: Modifier) {
-        val text = state[uid]!!.text
-        val mod = modifier.padding(8.dp)
-        if(!isDetailView()) Text(
-            modifier = mod,
-            style = arbPlainTextStyle(),
-            text = text
-        )
-        else ClickableText(
-            modifier = mod,
-            style = arbClickableTextStyle(),
-            text = buildAnnotatedString {
-                //Deliver the text and cursor/highlight
-                append(text)
-                if(elementBeingEdited == uid){
-                    val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
-                    val c = editingState().cursorPos
-                    if (text[c] == '(') {
-                        addStyle(sStyle, c - 1, c + 1)
-                        val iRightParen = (c..text.lastIndex).first { text[it] == ')' }
-                        addStyle(sStyle, iRightParen, iRightParen + 1)
-                    } else addStyle(sStyle, c, c + 1)
-                }
+    fun EccentricTextField(textFieldValue: MutableState<TextFieldValue>, modifier: Modifier = Modifier) {
+        val focusRequester = remember { FocusRequester() } //todo any use?
+        val interactionSource = remember { MutableInteractionSource() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        val sStyle = SpanStyle(background = MaterialTheme.colorScheme.tertiary)
+        val mod = modifier
+            .padding(8.dp)
+            .onFocusChanged { focusState ->
+                if (focusState.isFocused) elementBeingEdited = textFieldValue
             }
-        ) { clickedI ->
-            val ci = clickedI.coerceIn(text.indices) //todo also crash todo explain why needed, delete smth click end
-            val nextI = (clickedI + 1).coerceIn(text.indices)
-            elementBeingEdited = uid
-            editingState().updateCursor(when {
-                //rest on the opening paren of each parametric word
-                text[nextI] == '(' -> nextI
-                text[ci] == ',' -> ci - 1
-                text[ci] == ')' -> ci - 1
-                else -> ci
-            }.coerceIn(text.indices))
-        }
-    }
-    @Composable
-    fun AccursedTextWrapper(mainValue : MutableState<String>, section : Section, row : Int, modifier: Modifier = Modifier) {
-        val uid = remember { nextUIDPairedToHolder(mainValue, section, row) }
-        AccursedText(uid, modifier)
+            .focusRequester(focusRequester)
+        BasicTextField(
+            value = textFieldValue.value,
+            onValueChange = { newValue : TextFieldValue ->
+                if(!newValue.selection.collapsed) {
+                    //Todo smart selection TextRange
+                }
+                else {
+                    val ci = newValue.selection.min
+                    val nextI = (ci + 1).coerceAtMost(newValue.text.indices.last)
+                    //rest on the opening paren of each parametric word
+                    val newCursor = when {
+                        newValue.text[nextI] == '(' -> nextI
+                        newValue.text[ci] == ',' -> ci-1
+                        newValue.text[ci] == ')' -> ci-1
+                        else -> ci
+                    }
+                    textFieldValue.value = TextFieldValue(newValue.text, TextRange(newCursor, newCursor))
+                }
+            },
+            modifier = mod,
+            enabled = isDetailView(),
+            readOnly = true,
+            textStyle = if(isDetailView()) arbClickableTextStyle() else arbPlainTextStyle(),
+            singleLine = false,
+            visualTransformation = { annoStr : AnnotatedString ->
+                TransformedText(buildAnnotatedString {
+                    //Deliver the text and cursor/highlight
+                    val t = annoStr.text
+                    append(t)
+                    if(isDetailView()) {
+                        val c = textFieldValue.value.selection.min
+                        if (c in t.indices) {
+                            if (t[c] == '(') {
+                                addStyle(sStyle, c - 1, c + 1)
+                                val iRightParen = (c..t.lastIndex).first { t[it] == ')' }
+                                addStyle(sStyle, iRightParen, iRightParen + 1)
+                            } else addStyle(sStyle, c, c + 1)
+                        }
+                    }
+                }, OffsetMapping.Identity)
+            },
+            interactionSource = interactionSource,//todo?
+            cursorBrush = SolidColor(MaterialTheme.colorScheme.onSurfaceVariant),
+            keyboardActions = KeyboardActions(
+                onAny = {
+                    keyboardController?.hide()
+                }
+            )
+        )
     }
     @Composable
     fun EditTray() {
         //todo depending on section and specific field
-        val es = editingState().text
-        val ec = editingState().cursorPos
-        fun rangeOfCursorIndexOrWord() : IntRange = when (es[ec]) {
-            '(' -> ec - 1..(ec..es.lastIndex).first { es[it] == ')' }
-            else -> ec..ec
+        val s = elementBeingEdited.value.text
+        val cl = elementBeingEdited.value.selection.min //cursor
+        val cr = elementBeingEdited.value.selection.max
+        fun updateCursor(l : Int, r : Int) {
+            elementBeingEdited.value = TextFieldValue(s, TextRange(l, r))
         }
+        fun cursedRangeInclusive() : IntRange = cl..
+                if(s[cr - 1] != '(') cr - 1
+                else (cr until s.length).first { s[it] == ')' }
         Row {
-            fun moveCursor(x : Int) {
-                val new = (ec + x).coerceIn(es.indices)
-                editingState().updateCursor(new)
-            }
-            fun charFromCursor(offset : Int) : Char {
-                val loc = (ec + offset).coerceIn(es.indices)
-                return es[loc]
-            }
-            IconButton(enabled = ec > 0, onClick = {
-                moveCursor(when {
-                    charFromCursor( 0) == '(' -> -2
-                    charFromCursor(-1) == ',' -> -2
-                    charFromCursor(-1) == ')' -> -2
-                    else -> -1
-                })
+            IconButton(enabled = cr > 0, onClick = {
+                if(cr > cl) updateCursor(cl, cl)
+                else when {
+                    s[cl - 1] == '(' -> updateCursor(cl - 2, cr)
+                    s[cl - 1] in listOf(',',')') -> updateCursor(cl - 1, cr - 1)
+                    else -> { //check for 2-character symbol
+                        if(cl - 2 >= 0 && s.substring(cl - 2, cl).intern() in symbolsWithArgsInRow())
+                            updateCursor(cl - 2, cr)
+                        else updateCursor(cl - 1, cr)
+                    }
+                }
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowLeft, contentDescription = "Move cursor left")
             }
-            IconButton(enabled = ec < es.lastIndex, onClick = {
-                moveCursor(when {
-                    charFromCursor(2) == '(' -> 2
-                    charFromCursor(1) == ',' -> 2
-                    charFromCursor(1) == ')' -> 2
-                    else -> 1
-                })
+            IconButton(enabled = cl < s.lastIndex + 1, onClick = {
+                if(cl < cr) updateCursor(cr, cr)
+                else when {
+                    s.lastIndex >= cr + 2 && s[cr + 2] == '(' -> updateCursor(cl, cr + 2)
+                    s[cr + 1] in listOf(',',')') -> updateCursor(cl + 1, cr + 1)
+                    else -> { //check for 2-character symbol
+                        if(cr + 2 <= s.length && s.substring(cl, cr + 2).intern() in symbolsWithArgsInRow())
+                            updateCursor(cl, cr + 2)
+                        else updateCursor(cl, cr + 1)
+                    }
+                }
             }) {
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
-            IconButton(enabled = es[ec] != ' ', onClick = {
-                val range = rangeOfCursorIndexOrWord()
-                val l = range.first.let {
-                    if(it - 1 in es.indices && es[it - 1] == ' ') it - 1 else it
-                }
-                val r = range.last.let {
-                    if(it + 1 in es.indices && es[it + 1] == ' ') it + 1 else it
-                }
-                val new = es.replaceRange(l..r, " ")
-                editingState().updateCursor(l)
-                editingState().updateText(new)
+            //delete button in edit tray
+            IconButton(enabled = !elementBeingEdited.value.selection.collapsed, onClick = {
+                elementBeingEdited.value = TextFieldValue(
+                    s.removeRange(cursedRangeInclusive()),
+                    TextRange(cl, cl)
+                )
                 formUnvalidated = true
             }) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Backspace")
@@ -308,11 +371,11 @@ fun RulesScreen(
                 Text(stringResource(R.string.rules_btn_validate))
             }
             else IconButton(onClick = {}) {
-                val errForCurrentRow = when(editingState().section){
+                val errForCurrentRow = when(sectionBeingEdited){
                     Section.AXIOM  -> errorAxiom
-                    Section.RULES  -> errorsProductions[editingState().row]
-                    Section.SYMBOLS-> errorsSymbolIndividual[editingState().row]
-                    Section.PARAMS -> errorsParamIndividual[editingState().row]
+                    Section.RULES  -> errorsProductions[rowBeingEdited]
+                    Section.SYMBOLS-> errorsSymbolIndividual[rowBeingEdited]
+                    Section.PARAMS -> errorsParamIndividual[rowBeingEdited]
                     else   -> null
                 }
                 if (errForCurrentRow == null) {
@@ -327,8 +390,8 @@ fun RulesScreen(
         Row {
             LazyColumn {
                 fun isInParens() : Boolean {
-                    var i = ec - 1
-                    while (i in es.indices) when (es[i]) {
+                    var i = cl - 1
+                    while (i in s.indices) when(s[i]) {
                         '(' -> return true
                         ')' -> return false
                         else -> i--
@@ -342,20 +405,16 @@ fun RulesScreen(
                         Text("$sym\t\t\t$desc")
                     }
                 }
-                fun insertTextAndCursorRight(str : String, r : Int) {
-                    val gap = if(es[ec] == ' ') " " else ""
-                    editingState().updateText(
-                        es.replaceRange(
-                            rangeOfCursorIndexOrWord(),
-                            gap + str + gap
-                        )
+                fun insertTextAndCursorRight(str : String, right : Int = str.length) {
+                    elementBeingEdited.value = TextFieldValue(
+                        s.replaceRange(cursedRangeInclusive(), str),
+                        (cl + right).let { TextRange(it, it) }
                     )
-                    editingState().updateCursor(ec + r)
                     formUnvalidated = true
                 }
                 if(isInParens()) newParams.forEach {
-                    menuItem(it.symbol.value, it.name.value) {
-                        insertTextAndCursorRight(it.symbol.value, it.symbol.value.length)
+                    menuItem(it.symbol.value.text, it.name.value) {
+                        insertTextAndCursorRight(it.symbol.value.text)
                     }
                 }
                 else {
@@ -368,8 +427,8 @@ fun RulesScreen(
                                     append(" )")
                                 }.toString()
                             }
-                            val cr = it.symbol.length + if(it.nParams == 0) 0 else 1
-                            insertTextAndCursorRight(it.symbol + parameters, cr)
+                            val right = it.symbol.length + if(it.nParams == 0) 0 else 1 //enter (
+                            insertTextAndCursorRight(it.symbol + parameters, right)
                         }
                     }
                 }
@@ -378,7 +437,7 @@ fun RulesScreen(
     }
     @Composable
     fun <T> ReorderDeleteButtons( //for rules, symbols, or params lists
-        items : SnapshotStateList<T>,
+        items : MutableList<T>,
         errs : SnapshotStateList<ValidationResult.Failure?>,
         i : Int,
         itemDescription : String) {
@@ -410,7 +469,7 @@ fun RulesScreen(
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = if(!takesClicks) mod else mod.pointerInput(Unit) {
                 awaitEachGesture {
-                    val down = awaitFirstDown(pass = PointerEventPass.Main)
+                    awaitFirstDown(pass = PointerEventPass.Main)
                     var isClick = true
 
                     do { //todo test click
@@ -447,7 +506,7 @@ fun RulesScreen(
     fun <T : RItem> GroupLabeledSection(section : Section,
                                         c : KClass<T>,
                                         error : ValidationResult.Failure?,
-                                        items : SnapshotStateList<T>,
+                                        items : MutableList<T>,
                                         itemName : String,
                                         itemErrors : SnapshotStateList<ValidationResult.Failure?>,
                                         itemContent: @Composable (Int, T, @Composable () -> Unit) -> Unit) {
@@ -499,28 +558,28 @@ fun RulesScreen(
     }
     @Composable
     fun ItemAxiom() {
-        AccursedTextWrapper(axiom, Section.AXIOM, 0)
+        EccentricTextField(axiom.initial)
     }
     @Composable
-    fun RowScope.ItemRule(pr : MutableProduction, i : Int) {
-        AccursedTextWrapper(pr.before, Section.RULES, i)
+    fun RowScope.ItemRule(pr : MutableProduction) {
+        EccentricTextField(pr.before)
         Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = "Arrow")
-        AccursedTextWrapper(
-            pr.after, Section.RULES, i, Modifier
+        EccentricTextField(
+            pr.after, Modifier
                 .weight(1f)
                 .width(IntrinsicSize.Max)
         )
     }
     @Composable
-    fun ItemSym(s : MutableSymbol, iSym : Int, del : @Composable () -> Unit = {}) {
-        fun isAliasSymbol() = s.aliases.value != MutableSymbol.NOT_ALIAS_SYMBOL
+    fun ItemSym(s : MutableSymbol, del : @Composable () -> Unit = {}) {
+        fun isAliasSymbol() = s.aliases.value.text != MutableSymbol.NOT_ALIAS_SYMBOL
         var isOptionsExpand by remember { mutableStateOf(false) }
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AccursedTextWrapper(s.symbol, Section.SYMBOLS, iSym)
+                EccentricTextField(s.symbol)
                 if (isAliasSymbol()) {
                     Text("=")
-                    AccursedTextWrapper(s.aliases, Section.SYMBOLS, iSym)
+                    EccentricTextField(s.aliases)
                 }
                 ArbBasicTextField(s.desc.value, onValueChange = { v -> s.desc.value = v },
                     Modifier.weight(.1f), enabled = isDetailView()
@@ -531,8 +590,8 @@ fun RulesScreen(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Alias")
                     Switch(isAliasSymbol(), { b ->
-                        if (!b) s.aliases.value = MutableSymbol.NOT_ALIAS_SYMBOL
-                        else if (!isAliasSymbol()) s.aliases.value = "…"
+                        if (!b) s.aliases.value = TextFieldValue(MutableSymbol.NOT_ALIAS_SYMBOL)
+                        else if (!isAliasSymbol()) s.aliases.value = TextFieldValue("…")
                     })
                     Text("# Args")
                     (0..3).forEach { n ->
@@ -542,30 +601,30 @@ fun RulesScreen(
                                     val sb = StringBuilder()
                                     sb.append(s.symbol.value.let {
                                         if (b4 == 0) "$it( "
-                                        else it.substring(0, it.lastIndex) //remove )
+                                        else it.text.substring(0, it.text.lastIndex) //remove )
                                     })
                                     val commas = n - b4 - if(b4 == 0) 1 else 0
                                     repeat(commas) { sb.append(", ") }
                                     sb.append(")")
-                                    s.symbol.value = sb.toString()
+                                    s.symbol.value = TextFieldValue(sb.toString())
                                 }
                                 in n..n -> {} //no action
                                 else -> { //delete from end
                                     fun ans(): String {
                                         var commasAccepted = n - 1
                                         s.symbol.value.let {
-                                            for (i in it.indices) when (it[i]) {
-                                                '(' -> if (n == 0) return it.substring(0, i)
-                                                ',' -> if (commasAccepted-- == 0) return it.substring(
+                                            for (i in it.text.indices) when (it.text[i]) {
+                                                '(' -> if (n == 0) return it.text.substring(0, i)
+                                                ',' -> if (commasAccepted-- == 0) return it.text.substring(
                                                     0,
                                                     i
                                                 ) + ")"
                                             }
                                             if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args
-                                            return it
+                                            return it.text
                                         }
                                     }
-                                    s.symbol.value = ans()
+                                    s.symbol.value = TextFieldValue(ans())
                                 }
                             }
                             s.nParams.intValue = n
@@ -576,10 +635,10 @@ fun RulesScreen(
         }
     }
     @Composable
-    fun ItemParam(p : MutableParam, iPara : Int, del : @Composable () -> Unit = {}) {
+    fun ItemParam(p : MutableParam, del : @Composable () -> Unit = {}) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                AccursedTextWrapper(p.symbol, Section.PARAMS, iPara, Modifier.weight(.5f))
+                EccentricTextField(p.symbol, Modifier.weight(.5f))
                 ArbBasicTextField(p.name.value, { s -> p.name.value = s }, Modifier.weight(1.5f),
                     enabled = isDetailView()
                 )
@@ -641,9 +700,9 @@ fun RulesScreen(
             ItemWithErrorBar(sectionBeingEdited, rowBeingEdited) {
                 val r = rowBeingEdited
                 when(sectionBeingEdited) {
-                    Section.RULES -> ItemRule(productionRules[r], r)
-                    Section.SYMBOLS -> ItemSym(symbols[r], r)
-                    Section.PARAMS -> ItemParam(newParams[r], r)
+                    Section.RULES -> ItemRule(productionRules[r])
+                    Section.SYMBOLS -> ItemSym(symbols[r])
+                    Section.PARAMS -> ItemParam(newParams[r])
                     else -> ItemAxiom()
                 }
             }
@@ -670,7 +729,7 @@ fun RulesScreen(
             itemErrors = errorsProductions
         ) { iRule, pr, del ->
             ItemWithErrorBar(Section.RULES, iRule) {
-                ItemRule(pr, iRule)
+                ItemRule(pr)
                 del()
             }
         }
@@ -683,7 +742,7 @@ fun RulesScreen(
             itemErrors = errorsSymbolIndividual
         ) { iSym, s, del ->
             ItemWithErrorBar(Section.SYMBOLS, iSym) {
-                ItemSym(s, iSym, del)
+                ItemSym(s, del)
             }
         }
         GroupLabeledSection(
@@ -695,7 +754,7 @@ fun RulesScreen(
             itemErrors = errorsParamIndividual
         ) { iPara, p, del ->
             ItemWithErrorBar(Section.PARAMS, iPara) {
-                ItemParam(p, iPara, del)
+                ItemParam(p, del)
             }
         }
     }

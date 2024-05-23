@@ -9,8 +9,8 @@ object Systems {
     private val page25 by lazy { specify {
         name("Page 25")
         constant("δ", 30f)
-        initial(" !(.05) F(.02) ")
-        production(" F(x) ", " F(x) [ +(δ) F(x) ] F(x) [ +(-1*δ) ] [ F(x) ] ") //pg 25
+        initial("!(.05)F(.02)")
+        production("F(x)","F(x)[+(δ)F(x)]F(x)[+(-1*δ)][F(x)]") //pg 25
     }}
 
     /*private val page56 by lazy { specify {
@@ -40,11 +40,11 @@ object Systems {
         param("vᵣ", 1.732f, "width increase rate", SecondUnitInterval)
         constant("w₀", .0035f)
         constant("h₀", .29f)
-        initial(" !(w₀) F(h₀) /(45) A ")
+        initial("!(w₀)F(h₀)/(45)A")
         productions(
-            " A ", " !(w₀*vᵣ) F(.25*h₀) [ &(a) F(.25*h₀) A ] /(d₁) [ &(a) F(.25*h₀) A ] /(d₂) [ &(a) F(.25*h₀) A ] ",
-            " F(l) ", " F(l*lᵣ) ",
-            " !(w) ", " !(w*vᵣ) "
+            "A","!(w₀*vᵣ)F(.25*h₀)[&(a)F(.25*h₀)A]/(d₁)[&(a)F(.25*h₀)A]/(d₂)[&(a)F(.25*h₀)A]",
+            "F(l)","F(l*lᵣ)",
+            "!(w)","!(w*vᵣ)"
         )
     }}
 }
