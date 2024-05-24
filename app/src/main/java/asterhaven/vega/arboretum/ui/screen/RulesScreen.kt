@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -101,6 +100,7 @@ import asterhaven.vega.arboretum.ui.components.arbClickableTextStyle
 import asterhaven.vega.arboretum.ui.components.arbPlainTextStyle
 import dev.nesk.akkurate.ValidationResult
 import dev.nesk.akkurate.Validator
+import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.reflect.KClass
@@ -279,6 +279,14 @@ fun RulesScreen(
                 if (focusState.isFocused) setIDBeingEdited(msTextField)
             }
             .focusRequester(focusRequester)
+        var showCursor by remember { mutableStateOf(true) }
+        LaunchedEffect(msTextField.value) {
+            showCursor = true
+            while (true) {
+                delay(500)
+                showCursor = !showCursor
+            }
+        }
         BasicTextField(
             value = msTextField.value,
             onValueChange = { newValue : TextFieldValue ->
@@ -334,7 +342,7 @@ fun RulesScreen(
                 Box {
                     innerTextField()
                     val cl = msTextField.value.selection.start
-                    if (idBeingEdited.value === msTextField &&
+                    if (showCursor && idBeingEdited.value === msTextField &&
                         cl == msTextField.value.selection.end) {
                         textLayoutResult?.let { layoutResult ->
                             val cursorOffset = layoutResult.getCursorRect(cl)
@@ -349,9 +357,9 @@ fun RulesScreen(
                                         x = cursorOffset.left.toDp(),
                                         y = cursorOffset.top.toDp()
                                     )
-                                    .background(Color.Green)
+                                    .background(MaterialTheme.colorScheme.onSurfaceVariant)
                                     .width(1.dp)
-                                    .height(18.dp) //todo var
+                                    .height(cursorHeight.toDp())
                             )
                         }
                     }
