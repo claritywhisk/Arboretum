@@ -76,8 +76,8 @@ object SpecificationRegexAndValidation {
     val validateProduction by lazy {
         Validator<LProduction> {
             (before and after){
-                isNotEmpty()
-                isNotBlank()
+                val (ok) = isNotEmpty()
+                if(ok) isNotBlank()
                 constrain { bracketsMatch(this.unwrap()) } otherwise bracketMsg
                 isMatching(rgxValidRawSentence) otherwise rgxMsg
             }

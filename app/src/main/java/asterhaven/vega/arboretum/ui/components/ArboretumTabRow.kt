@@ -96,7 +96,7 @@ private fun ArbTab(
     )
     Row(
         modifier = Modifier
-            .padding(16.dp)
+            .padding(24.dp)
             .animateContentSize()
             .height(TabHeight)
             .selectable(

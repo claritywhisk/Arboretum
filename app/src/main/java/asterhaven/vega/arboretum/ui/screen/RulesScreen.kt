@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -291,19 +292,16 @@ fun RulesScreen(
             value = msTextField.value,
             onValueChange = { newValue : TextFieldValue ->
                 if(!newValue.selection.collapsed) {
-                    //Todo smart selection TextRange
+                    //todo don't disregard?
                 }
                 else {
                     val ci = newValue.selection.min.coerceAtMost(newValue.text.indices.last)
+                    val preI = (ci - 1).coerceAtLeast(0)
                     val nextI = (ci + 1).coerceAtMost(newValue.text.indices.last)
-                    //rest on the opening paren of each parametric word todo review
-                    val newCursor = when {
-                        newValue.text[nextI] == '(' -> nextI
-                        newValue.text[ci] == ',' -> ci-1
-                        newValue.text[ci] == ')' -> ci-1
-                        else -> ci
-                    }
-                    msTextField.value = TextFieldValue(newValue.text, TextRange(newCursor, newCursor))
+                    if(nextI - preI == 2 && //landed in middle of 2-character symbol?
+                        newValue.text.substring(preI, nextI).intern() in symbolsWithArgsInRow())
+                            msTextField.value = TextFieldValue(newValue.text, TextRange(preI, nextI))
+                    else msTextField.value = TextFieldValue(newValue.text, TextRange(ci, ci))
                 }
             },
             modifier = mod,
@@ -316,8 +314,7 @@ fun RulesScreen(
                     //Deliver the text and cursor/highlight
                     append(annoStr)
                     val t = annoStr.text
-                    if(idBeingEdited.value === msTextField
-                        && !msTextField.value.selection.collapsed) {
+                    if(idBeingEdited.value === msTextField) {
                         val c = msTextField.value.selection.min
                         if (c in t.indices) {
                             if (t[c] == '(') {
@@ -382,7 +379,7 @@ fun RulesScreen(
             IconButton(enabled = cr > 0, onClick = {
                 if(cr > cl) updateCursor(cl, cl)
                 else when {
-                    s[cl - 1] == '(' -> updateCursor(cl - 2, cr)
+                    s[cl] == '(' || s[cl - 1] == '(' -> updateCursor(cl - 1, cl - 1) //special: rest on (
                     s[cl - 1] in listOf(',',')') -> updateCursor(cl - 1, cr - 1)
                     else -> { //check for 2-character symbol
                         if(cl - 2 >= 0 && s.substring(cl - 2, cl).intern() in symbolsWithArgsInRow())
@@ -396,8 +393,8 @@ fun RulesScreen(
             IconButton(enabled = cl < s.lastIndex + 1, onClick = {
                 if(cl < cr) updateCursor(cr, cr)
                 else when {
-                    s.lastIndex >= cr + 2 && s[cr + 2] == '(' -> updateCursor(cl, cr + 2)
-                    s[cr] in listOf(',',')') -> updateCursor(cl + 1, cr + 1)
+                    s.lastIndex >= cr + 1 && s[cr + 1] == '(' -> updateCursor(cr + 1, cr + 1) //special: rest on (
+                    s[cr] in listOf('(' , ',' , ')') -> updateCursor(cl + 1, cr + 1)
                     else -> { //check for 2-character symbol
                         if(cr + 2 <= s.length && s.substring(cl, cr + 2).intern() in symbolsWithArgsInRow())
                             updateCursor(cl, cr + 2)
@@ -455,7 +452,9 @@ fun RulesScreen(
                     Row(
                         Modifier.clickable { onClick() }
                     ) {
-                        Text("$sym\t\t\t$desc")
+                        Text("$sym")
+                        Spacer(Modifier.width(12.dp))
+                        Text("$desc")
                     }
                 }
                 fun insertTextAndCursorRight(str : String, right : Int = str.length) {
