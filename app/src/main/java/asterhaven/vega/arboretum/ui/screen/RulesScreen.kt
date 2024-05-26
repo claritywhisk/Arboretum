@@ -3,8 +3,7 @@ package asterhaven.vega.arboretum.ui.screen
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -59,10 +58,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -405,7 +401,12 @@ fun RulesScreen(
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = "Move cursor right")
             }
             //delete button in edit tray
-            IconButton(enabled = !currentTextFieldValue().selection.collapsed, onClick = {
+            val onParensSymbol = currentTextFieldValue().selection.let { sel ->
+                currentTextFieldValue().text.let { tex ->
+                    sel.max <= tex.lastIndex && tex[sel.max] == '('
+                }
+            }
+            IconButton(enabled = !currentTextFieldValue().selection.collapsed || onParensSymbol, onClick = {
                 updateText(TextFieldValue(
                     s.removeRange(cursedRangeInclusive()),
                     TextRange(cl, cl)
@@ -452,9 +453,9 @@ fun RulesScreen(
                     Row(
                         Modifier.clickable { onClick() }
                     ) {
-                        Text("$sym")
+                        Text(sym)
                         Spacer(Modifier.width(12.dp))
-                        Text("$desc")
+                        Text(desc)
                     }
                 }
                 fun insertTextAndCursorRight(str : String, right : Int = str.length) {
@@ -520,24 +521,12 @@ fun RulesScreen(
         val mod = Modifier.fillMaxWidth()
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = if(!takesClicks) mod else mod.pointerInput(Unit) {
-                awaitEachGesture {
-                    awaitFirstDown(pass = PointerEventPass.Main)
-                    var isClick = true
-
-                    do { //todo test click
-                        val event = awaitPointerEvent(pass = PointerEventPass.Main)
-                        val anyPositionChange =
-                            event.changes.any { it.positionChange() != androidx.compose.ui.geometry.Offset.Zero }
-                        if (anyPositionChange) {
-                            isClick = false
-                        }
-                    } while (event.changes.any { it.pressed })
-
-                    if (isClick) {
+                detectTapGestures(
+                    onTap = {
                         sectionBeingEdited = section
                         rowBeingEdited = row
                     }
-                }
+                )
             },
             content = content
         )
