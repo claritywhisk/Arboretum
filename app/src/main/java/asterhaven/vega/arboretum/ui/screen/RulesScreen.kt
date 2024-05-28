@@ -211,7 +211,7 @@ fun RulesScreen(
     var rowBeingEdited by remember { mutableIntStateOf(noRow) }
 
     val idNotEditing = remember { textField("") }
-    var idBeingEdited : MutableState<MutableState<TextFieldValue>> = remember { mutableStateOf(idNotEditing) }
+    val idBeingEdited : MutableState<MutableState<TextFieldValue>> = remember { mutableStateOf(idNotEditing) }
     fun setIDBeingEdited(element : MutableState<TextFieldValue>) {
         idBeingEdited.value = element
     }
@@ -277,7 +277,7 @@ fun RulesScreen(
             }
             .focusRequester(focusRequester)
         var showCursor by remember { mutableStateOf(true) }
-        LaunchedEffect(msTextField.value) {
+        if(idBeingEdited.value == msTextField) LaunchedEffect(msTextField.value) {
             showCursor = true
             while (true) {
                 delay(500)
@@ -623,18 +623,19 @@ fun RulesScreen(
                     EccentricTextField(s.aliases)
                 }
                 ArbBasicTextField(s.desc.value, onValueChange = { v -> s.desc.value = v },
-                    Modifier.weight(.1f), enabled = isDetailView()
+                    Modifier.weight(.1f), isEnabled = isDetailView()
                 )
                 del()
             }
             if (isDetailView()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Alias")
+                    //Text("Alias")
                     Switch(isAliasSymbol(), { b ->
                         if (!b) s.aliases.value = TextFieldValue(MutableSymbol.NOT_ALIAS_SYMBOL)
                         else if (!isAliasSymbol()) s.aliases.value = TextFieldValue("…")
                     })
-                    Text("# Args")
+                    Spacer(Modifier.width(8.dp))
+                    //Text("# Args")
                     (0..3).forEach { n ->
                         RadioButton(selected = s.nParams.intValue == n, onClick = {
                             when (val b4 = s.nParams.intValue) {
@@ -681,7 +682,7 @@ fun RulesScreen(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EccentricTextField(p.symbol, Modifier.weight(.5f))
                 ArbBasicTextField(p.name.value, { s -> p.name.value = s }, Modifier.weight(1.5f),
-                    enabled = isDetailView()
+                    isEnabled = isDetailView()
                 )
                 ParamTextField(p.initialValue.floatValue, p.type.value, isDetailView()) { newFloatVal ->
                     p.initialValue.floatValue = newFloatVal
@@ -693,7 +694,7 @@ fun RulesScreen(
                     selection = p.type,
                     onSelect = { pt -> p.type.value = pt as ParameterType },
                     name = { pt ->
-                        when (pt) {
+                         when (pt) { //todo getting mutablestates passed here
                             is MenuPT -> pt.name
                             is IntParameterType -> stringResource(R.string.rules_param_custom_int)
                             else -> stringResource(R.string.rules_param_custom)
@@ -705,19 +706,19 @@ fun RulesScreen(
                 val isConstant = t.range.start == t.range.endInclusive
 
                 @Composable
-                fun RangeTF(otherEnd: Float) = ParamTextField(t.range.start, t, isDetailView()) { v ->
+                fun RangeTF(initialValue : Float, otherEnd: Float) = ParamTextField(initialValue, t, isDetailView()) { v ->
                     val l = min(v, otherEnd)
                     val r = max(v, otherEnd)
-                    p.type.value = when {
+                    /*p.type.value = when { //TODO
                         isConstant -> ParameterType(v, v)
                         t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
                         else -> ParameterType(l, r)
-                    }
+                    }*/
                 }
-                RangeTF(t.range.endInclusive)
+                RangeTF(t.range.start, t.range.endInclusive)
                 if (!isConstant) {
                     Text(stringResource(R.string.rules_params_range_to))
-                    RangeTF(t.range.start)
+                    RangeTF(t.range.endInclusive, t.range.start)
                 }
             }
         }
