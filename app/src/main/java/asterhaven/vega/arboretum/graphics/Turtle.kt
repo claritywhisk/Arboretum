@@ -30,7 +30,7 @@ object Turtle {
             HLU[2] = dir.cross(axisL)
         }
         val heading
-            get() = UnitVector( // TODO any good?
+            get() = UnitVector(
                 HLU.floatArrayValue[0],
                 HLU.floatArrayValue[1],
                 HLU.floatArrayValue[2]

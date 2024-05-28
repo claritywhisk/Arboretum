@@ -77,8 +77,10 @@ import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.lsystems.Constant
+import asterhaven.vega.arboretum.lsystems.Custom
 import asterhaven.vega.arboretum.lsystems.CustomSymbol
 import asterhaven.vega.arboretum.lsystems.IntParameterType
+import asterhaven.vega.arboretum.lsystems.Integer
 import asterhaven.vega.arboretum.lsystems.IntermediateSymbol
 import asterhaven.vega.arboretum.lsystems.Specification
 import asterhaven.vega.arboretum.lsystems.LParameter
@@ -582,7 +584,8 @@ fun RulesScreen(
                         errorsSymbolIndividual.add(null)
                     }
                     else -> {
-                        newParams.add(MutableParam(" ", " ", Constant, 1f))
+                        val pNew = Constant() //default value is a constant, phi
+                        newParams.add(MutableParam(" ", " ", pNew, pNew.c))
                         errorsParamIndividual.add(null)
                     }
                 }
@@ -694,7 +697,7 @@ fun RulesScreen(
                     selection = p.type,
                     onSelect = { pt -> p.type.value = pt as ParameterType },
                     name = { pt ->
-                         when (pt) { //todo getting mutablestates passed here
+                         when (pt) { //todo getting mutablestates passed here; check when convert menu
                             is MenuPT -> pt.name
                             is IntParameterType -> stringResource(R.string.rules_param_custom_int)
                             else -> stringResource(R.string.rules_param_custom)
@@ -706,14 +709,15 @@ fun RulesScreen(
                 val isConstant = t.range.start == t.range.endInclusive
 
                 @Composable
-                fun RangeTF(initialValue : Float, otherEnd: Float) = ParamTextField(initialValue, t, isDetailView()) { v ->
+                fun RangeTF(initialValue : Float, otherEnd: Float) = ParamTextField(
+                    initialValue, t, isDetailView()) { v ->
                     val l = min(v, otherEnd)
                     val r = max(v, otherEnd)
-                    /*p.type.value = when { //TODO
-                        isConstant -> ParameterType(v, v)
-                        t is IntParameterType -> IntParameterType(l.toInt(), r.toInt())
-                        else -> ParameterType(l, r)
-                    }*/
+                    p.type.value = when {
+                        isConstant -> Constant(v)
+                        t is IntParameterType -> Integer(l.toInt(), r.toInt())
+                        else -> Custom(l, r)
+                    }
                 }
                 RangeTF(t.range.start, t.range.endInclusive)
                 if (!isConstant) {

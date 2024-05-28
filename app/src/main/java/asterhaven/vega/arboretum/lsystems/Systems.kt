@@ -13,7 +13,7 @@ object Systems {
         production("F(x)","F(x)[+(δ)F(x)]F(x)[+(-1*δ)][F(x)]") //pg 25
     }}
 
-    /*private val page56 by lazy { specify {
+    private val page56 by lazy { specify {
         name("Page 56")
         param("r₁", 0.9f, "contraction ratio for the trunk", UnitInterval)
         param("r₂", 0.6f, "contraction ratio for the branches", UnitInterval)
@@ -29,7 +29,7 @@ object Systems {
             "B(l,w)", "!(w)F(l)[-(a₂)\$C(l*r₂,w*w₂)]C(l*r₁,w*w₂)",
             "C(l,w)", "!(w)F(l)[+(a₂)\$B(l*r₂,w*wᵣ)]B(l*r₁,w*wᵣ)"
         )
-    }}*/
+    }}
 
     private val page60 by lazy { specify {
         name("Page 60")
@@ -38,7 +38,7 @@ object Systems {
         param("a", 18.95f, "branching angle", AngleAcute)
         param("lᵣ", 1.109f, "elongation rate", SecondUnitInterval)
         param("vᵣ", 1.732f, "width increase rate", SecondUnitInterval)
-        constant("w₀", .0035f)
+        constant("w₀", .0035f) //TODO sizing
         constant("h₀", .29f)
         initial("!(w₀)F(h₀)/(45)A")
         productions(
@@ -66,7 +66,7 @@ class SpecificationBuilder {
         if(type is DerivationSteps) hasSteps = true
     }
     fun constant(symbol : String, value : Float, name : String = "") =
-        param(symbol, value, name, ParameterType(value..value))
+        param(symbol, value, name, Constant(value))
     fun name(name : String){ n = name }
     fun production(vararg s : String) = productions(*s)
     fun productions(vararg s : String){

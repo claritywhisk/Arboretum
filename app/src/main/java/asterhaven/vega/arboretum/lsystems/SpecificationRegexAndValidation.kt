@@ -88,7 +88,7 @@ object SpecificationRegexAndValidation {
     val validateSymbol by lazy {
         Validator<LSymbol> {
             //unwrap().meaning.isMatching(rgxValidRawSentence) MutableSymbol
-            //all TODO this file
+            //all Todo this file as needed
         }
     }
 

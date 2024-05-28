@@ -34,7 +34,7 @@ sealed interface LSymbol {
                 //if (BuildConfig.DEBUG) if(params.size != ls.nParams) squawk() //todo revamp all
                 if(params.size == 1) ls.objectClass.constructors.first().call(params[0])
                 else ls.objectClass.objectInstance ?: ls.objectClass.constructors.first().call(Float.NaN) //todo all bollocks
-            } else LWord.Apex.also {//TODO reached!
+            } else LWord.Apex.also {
                 if (BuildConfig.DEBUG) squawk()
             }
         }
