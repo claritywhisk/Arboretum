@@ -66,8 +66,8 @@ object SpecificationRegexAndValidation {
 
     val validateAxiom by lazy {
         Validator<String> {
-            isNotEmpty()
-            isNotBlank()
+            val (ok) = isNotEmpty()
+            if(ok) isNotBlank()
             constrain { bracketsMatch(this.unwrap()) } otherwise bracketMsg
             isMatching(rgxValidRawSentence) otherwise rgxMsg
         }
@@ -81,12 +81,13 @@ object SpecificationRegexAndValidation {
                 constrain { bracketsMatch(this.unwrap()) } otherwise bracketMsg
                 isMatching(rgxValidRawSentence) otherwise rgxMsg
             }
+            //todo check symbols
         }
     }
 
     val validateSymbol by lazy {
         Validator<LSymbol> {
-            //unwrap().meaning.isMatching(rgxValidRawSentence)
+            //unwrap().meaning.isMatching(rgxValidRawSentence) MutableSymbol
             //all TODO this file
         }
     }

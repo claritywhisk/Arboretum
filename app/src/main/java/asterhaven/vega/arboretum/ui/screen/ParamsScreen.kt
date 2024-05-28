@@ -22,9 +22,11 @@ import asterhaven.vega.arboretum.R
 import asterhaven.vega.arboretum.graphics.PreviewGLSurfaceView
 import asterhaven.vega.arboretum.lsystems.DerivationSteps
 import asterhaven.vega.arboretum.lsystems.IntParameterType
+import asterhaven.vega.arboretum.lsystems.LParameter
 import asterhaven.vega.arboretum.lsystems.TreeLSystem
 import asterhaven.vega.arboretum.ui.ArboretumViewModel
 import asterhaven.vega.arboretum.ui.components.ParamTextField
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlin.math.roundToInt
 
@@ -52,30 +54,29 @@ fun ParamsScreen(
         }
         LazyColumn {
             items(params.size, { i -> params[i].p.symbol }) { i ->
-                ParameterSetter(params[i])
+                ParameterSetter(params[i].p, params[i].valueSF, params[i]::onValueChange)
             }
         }
     }
 }
 
 @Composable
-fun ParameterSetter (
-    paramWrapper : ArboretumViewModel.ViewModelParamWrapper
-) {
-    val value = paramWrapper.valueSF.collectAsState().value
+fun ParameterSetter (p : LParameter, flow : StateFlow<Float>, update : (Float) -> Unit) {
+    val value by flow.collectAsState()
     Column {
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically
         ){
-            Text(paramWrapper.p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
-            Text(paramWrapper.p.name, Modifier.weight(1.5f))
-            ParamTextField(value, paramWrapper.p.type, true, paramWrapper::onValueChange)
+            Text(p.symbol, Modifier.weight(.5f), textAlign = TextAlign.Center)
+            Text(p.name, Modifier.weight(1.5f))
+            ParamTextField(value, p.type, true, update)
         }
-        Slider( value = value,
-            onValueChange = paramWrapper::onValueChange,
-            valueRange = paramWrapper.p.type.range,
-            steps = (if(paramWrapper.p.type is IntParameterType) paramWrapper.p.type.rungsCount() else 0)
+        Slider(
+            value = value,
+            onValueChange = update,
+            valueRange = p.type.range,
+            steps = (if (p.type is IntParameterType) p.type.rungsCount() else 0)
         )
     }
 }

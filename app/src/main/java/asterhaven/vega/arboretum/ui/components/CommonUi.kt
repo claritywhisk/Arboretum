@@ -1,5 +1,6 @@
 package asterhaven.vega.arboretum.ui.components
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,6 +14,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,28 +49,44 @@ fun ArbBasicTextField(
     value : String,
     onValueChange : (String) -> Unit,
     modifier: Modifier = Modifier,
-    enabled : Boolean,
+    isEnabled : Boolean,
     keyboardOptions: KeyboardOptions = KeyboardOptions()
 ) {
     BasicTextField(
         value,
         onValueChange,
         modifier,
-        enabled = enabled,
+        enabled = isEnabled,
         keyboardOptions = keyboardOptions,
         singleLine = true,
-        textStyle = if(enabled) arbClickableTextStyle() else arbPlainTextStyle()
+        textStyle = if(isEnabled) arbClickableTextStyle() else arbPlainTextStyle()
     )
 }
 
 @Composable
 fun ParamTextField(value : Float, type : ParameterType, enabled : Boolean, update : (Float) -> Unit) {
+    fun format(f : Float) = if (type is IntParameterType) f.roundToInt().toString() else "%.2f".format(f)
+    var text by remember { mutableStateOf( format(value) )}
+    var err by remember { mutableStateOf(false) }
+    LaunchedEffect(value) {
+        err = false
+        val formattedValue = format(value)
+        if(formattedValue != text) text = formattedValue
+    }
     ArbBasicTextField(
-        if(type is IntParameterType) value.roundToInt().toString() else "%.2f".format(value),
-        { newVal -> newVal.toFloatOrNull()?.let { update(it) } },
-        //Modifier.width(IntrinsicSize.Min), //width(96.dp), todo
-        enabled = enabled,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+        text,
+        { newText ->
+            err = false
+            text = newText
+            when(val f = newText.toFloatOrNull()) {
+                null -> err = true
+                else -> if(f in type.range) update(f)
+                        else err = true
+            }
+        },
+        if(err) Modifier.background(MaterialTheme.colorScheme.error) else Modifier,
+        isEnabled = enabled,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
     )
 }
 
