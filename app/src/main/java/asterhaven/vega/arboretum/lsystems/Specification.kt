@@ -31,8 +31,8 @@ data class Specification(
             val m = SpecificationRegexAndValidation.patWord.matcher(initial.remSpace())
             while (m.find()) {
                 it += when (val args = m.group(3)) {
-                    null -> LSymbol.parseStandard(m.group(1)!!)
-                    else -> LSymbol.parseStandard(m.group(1)!!, *args.split(',').map { p ->
+                    null -> LWord.parseStandard(m.group(1)!!)
+                    else -> LWord.parseStandard(m.group(1)!!, *args.split(',').map { p ->
                         constants[p] ?: p.toFloat() //is it in constants?
                     }.toFloatArray())
                 }
@@ -49,7 +49,7 @@ data class Specification(
                     m.find()
                     val args = m.group(3)
                     args?.split(',')?.forEach { onParam(it) }
-                    LSymbol.parseStandard(m.group(1)!!) //ToDo probably need more to handle nonbasic symbols
+                    LWord.parseStandard(m.group(1)!!) //ToDo probably need more to handle nonbasic symbols
                 }
             }
 
