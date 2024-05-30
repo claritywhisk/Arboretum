@@ -9,23 +9,19 @@ sealed interface LSymbol {
     val desc: String
     companion object {
         val standardSymbols : SymbolSet by lazy {
-            val basics = arrayOf(
-                BasicLSymbol("F", 1, "Forward", LWord.Forward(0f)),
-                BasicLSymbol("f", 1, "Forward, no draw", LWord.ForwardNoDraw(0f)),
-                BasicLSymbol("!", 1, "Set line width", LWord.SetWidth(0f)),
-                BasicLSymbol("+", 1, "Turn left", LWord.Plus(0f)),
-                BasicLSymbol("&", 1, "Pitch down", LWord.And(0f)),
-                BasicLSymbol("/", 1, "Roll over", LWord.Over(0f)),
-                BasicLSymbol("[", 0, "Save turtle state", LWord.BracketL),
-                BasicLSymbol("]", 0, "Load state (LIFO)", LWord.BracketR)
-            )
-            val list = ArrayList<LSymbol>(basics.size)
-            val wordMap = HashMap<String, LWord>()
-            basics.forEach {
-                list.add(it)
-                wordMap[it.symbol] = it.canonicalWord
+            SymbolSet().apply {
+                val nan = Float.NaN
+                arrayOf(
+                    BasicLSymbol("F", 1, "Forward", LWord.Forward(nan)),
+                    BasicLSymbol("f", 1, "Forward, no draw", LWord.ForwardNoDraw(nan)),
+                    BasicLSymbol("!", 1, "Set line width", LWord.SetWidth(nan)),
+                    BasicLSymbol("+", 1, "Turn left", LWord.Plus(nan)),
+                    BasicLSymbol("&", 1, "Pitch down", LWord.And(nan)),
+                    BasicLSymbol("/", 1, "Roll over", LWord.Over(nan)),
+                    BasicLSymbol("[", 0, "Save turtle state", LWord.BracketL),
+                    BasicLSymbol("]", 0, "Load state (LIFO)", LWord.BracketR)
+                ).forEach { s -> initBuildStandardAdd(s, s.canonicalWord) }
             }
-            SymbolSet(list, wordMap)
         }
     }
 }
@@ -46,7 +42,7 @@ data class IntermediateSymbol(
     override val desc: String
 ) : LSymbol
 //otherwise, base symbol directly producing 1 standard LWord
-private data class BasicLSymbol(
+data class BasicLSymbol(
     override val symbol : String,
     override val nParams: Int,
     override val desc: String,

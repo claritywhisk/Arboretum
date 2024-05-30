@@ -3,20 +3,11 @@ package asterhaven.vega.arboretum.lsystems
 import asterhaven.vega.arboretum.graphics.Turtle
 
 sealed class LWord(vararg val p : Float) {
-    companion object {
-        //turn text into machine words
-        fun parseStandard(sym : String, vararg params : Float) : LWord {
-            val nParams = params.size
-            val w = LSymbol.standardSymbols.aMap[sym]
-            fun squawk() : Nothing = throw Error("Error reading L-system from plaintext" + "\n" +
-                    "symbol: $sym(${params.contentToString()}) nParams ${nParams}/${w?.p?.size}")
-            if(w == null || w.p.size != nParams) squawk()
-            return if(nParams == 0) w else w.withValues(*params)
-        }
-    }
     open fun withValues(vararg a : Float) : LWord {
         throw UnsupportedOperationException()
     }
+    open fun name() : String = this::class.simpleName ?: "unnamed?!?"
+    override fun toString(): String = "${name()}(${p.contentToString()})"
     data object BracketL : LWord()
     data object BracketR : LWord()
     sealed class VanillaWord(val a : Float) : LWord(a) {
@@ -29,8 +20,9 @@ sealed class LWord(vararg val p : Float) {
             is Plus ->  Plus(a[0])
         }
     }
-    class OtherWord(val sym : String, vararg a : Float) : LWord(*a) {
+    class OtherWord(private val sym : String, vararg a : Float) : LWord(*a) {
         override fun withValues(vararg a: Float): LWord = OtherWord(sym, *a)
+        override fun name() = "OtherWord $sym"
     }
     class SetWidth(a : Float) : VanillaWord(a)
     class Forward(a : Float) : VanillaWord(a)

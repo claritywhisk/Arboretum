@@ -1,5 +1,6 @@
 package asterhaven.vega.arboretum.lsystems
 
+import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.utility.DEFAULT_STEPS
 import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
 import dev.nesk.akkurate.ValidationResult
@@ -23,7 +24,7 @@ object Systems {
         param("wᵣ", 0.707f, "width decrease rate", UnitInterval)
         constant("l₀", 1f)
         constant("w₀", 10f)
-        initial("A(l₀,w₀)") //TODO multiple parameters with comma
+        initial("A(l₀,w₀)")
         productions(
             "A(l,w)", "!(w)F(l)[&(a₀)B(l*r₂,w*wᵣ)]/(d)A(l*r₁,w*wᵣ)",
             "B(l,w)", "!(w)F(l)[-(a₂)\$C(l*r₂,w*w₂)]C(l*r₁,w*w₂)",
@@ -57,8 +58,24 @@ class SpecificationBuilder {
     private val pa = arrayListOf<LParameter>()
     private val pr = arrayListOf<LProduction>()
     private var hasSteps = false
+    private var nonbasicSymbols = SymbolSet()
+    //the tests in Systems.kt also have non-default symbols like apex A that won't have been processed by the rules UI
+    private fun parseForNonbasicSymbol(str : String) {
+        fun String.remSpace() = this.filterNot { it.isWhitespace() }
+        val m = SpecificationRegexAndValidation.patWord.matcher(str.remSpace())
+        while (m.find()) {
+            val sym = m.group(1)!!
+            if(SymbolSet.standard.word.containsKey(sym)
+                || nonbasicSymbols.word.containsKey(sym))
+                continue
+            val nArgs = m.group(3)?.split(',')?.size ?: 0
+            val viewSymbol = IntermediateSymbol(sym, nArgs, "from a test specification")
+            nonbasicSymbols.add(viewSymbol)
+        }
+    }
     fun initial(s : String){
         i = s
+        parseForNonbasicSymbol(s)
     }
     fun param(symbol: String, value : Float, name : String = "", type : ParameterType){
         pa.add(LParameter(symbol, name, type, value))
@@ -75,12 +92,13 @@ class SpecificationBuilder {
         }.forEach {
             pr.add(it)
         }
+        s.forEach { parseForNonbasicSymbol(it) }
     }
     fun addStepsIfMissing() {
         if(!hasSteps) param("", DEFAULT_STEPS.toFloat(), "Steps",
             DerivationSteps(DEFAULT_STEPS_SLIDER_MAX))
     }
-    fun build() = Specification(n, i, pr, pa, cons)
+    fun build() = Specification(n, i, pr, pa, cons, nonbasicSymbols)
 }
 
 fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification {

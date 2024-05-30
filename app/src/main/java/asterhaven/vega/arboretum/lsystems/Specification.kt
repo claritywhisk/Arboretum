@@ -1,5 +1,6 @@
 package asterhaven.vega.arboretum.lsystems
 
+import asterhaven.vega.arboretum.data.model.SymbolSet
 import dev.nesk.akkurate.annotations.Validate
 
 //a variable which becomes a number
@@ -18,7 +19,8 @@ data class Specification(
     val initial : String,
     val productions : List<LProduction> = arrayListOf(),
     val params : List<LParameter> = arrayListOf(),
-    val constants: HashMap<String, Float> = HashMap() //symbols from params
+    val constants : HashMap<String, Float> = HashMap(), //symbols from params
+    val symbolSet : SymbolSet
 ) {
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
@@ -27,16 +29,22 @@ data class Specification(
     }
     fun compile(): TreeLSystem {
         fun String.remSpace() = this.filterNot { it.isWhitespace() }
-        val initialParsed = LList().also {
+        //turn text into machine words
+        fun parse(sym : String, vararg params : Float) : LWord {
+            val nParams = params.size
+            //check the auxiliary
+            val w = symbolSet.word[sym] ?: LSymbol.standardSymbols.word[sym]
+            if(w != null && w.p.size == nParams)
+                return if(nParams == 0) w else w.withValues(*params)
+            else throw Error("Error reading L-system from plaintext\n" +
+                    "symbol: $sym(${params.contentToString()}) nParams ${nParams}/${w?.p?.size}")
+        }
+        val initialParsed = LList().apply {
             val m = SpecificationRegexAndValidation.patWord.matcher(initial.remSpace())
-            while (m.find()) {
-                it += when (val args = m.group(3)) {
-                    null -> LWord.parseStandard(m.group(1)!!)
-                    else -> LWord.parseStandard(m.group(1)!!, *args.split(',').map { p ->
-                        constants[p] ?: p.toFloat() //is it in constants?
-                    }.toFloatArray())
-                }
-            }
+            while (m.find()) this +=
+                parse(m.group(1)!!, *m.group(3)?.split(',')?.map {
+                    p -> constants[p] ?: p.toFloat() //is it in constants?
+                }?.toFloatArray() ?: FloatArray(0))
         }
         val rules = Array(productions.size) { rI ->
             val ruleParam = HashMap<String, Int>() //index of variable when reading before string
@@ -49,7 +57,7 @@ data class Specification(
                     m.find()
                     val args = m.group(3)
                     args?.split(',')?.forEach { onParam(it) }
-                    LWord.parseStandard(m.group(1)!!) //ToDo probably need more to handle nonbasic symbols
+                    parse(m.group(1)!!)
                 }
             }
 
