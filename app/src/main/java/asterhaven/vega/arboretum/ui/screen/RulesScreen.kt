@@ -142,7 +142,7 @@ private class MutableParam(sym: String, name: String, type: ParameterType, initi
     fun make() : LParameter = LParameter(symbol.value.text, name.value, type.value, initialValue.floatValue)
 }
 val commonSymbols : MutableList<String> = mutableListOf<String>().apply {
-    SymbolSet.standard.symbols.forEach { add(it.symbol) }
+    SymbolSet.standard.symbols.forEach { add(it.key) }
 }
 private class SnapshotStateListWrapper<T : NamesCommonSymbol>(private val delegate: SnapshotStateList<T>)
     : MutableList<T> by delegate {
@@ -473,7 +473,7 @@ fun RulesScreen(
                     }
                 }
                 else {
-                    SymbolSet.standard.symbols.forEach {
+                    SymbolSet.standard.symbols.values.forEach {
                         menuItem(it.symbol, it.desc) {
                             val parameters = if (it.nParams == 0) "" else {
                                 StringBuilder().apply {

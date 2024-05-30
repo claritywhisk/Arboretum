@@ -1,6 +1,7 @@
 package asterhaven.vega.arboretum.lsystems
 
 import asterhaven.vega.arboretum.BuildConfig
+import asterhaven.vega.arboretum.data.model.SymbolSet
 import kotlin.reflect.KClass
 
 sealed interface LSymbol {
@@ -8,8 +9,7 @@ sealed interface LSymbol {
     val nParams: Int
     val desc: String
     companion object {
-        val standardSymbolLookup : LinkedHashMap<String, out LSymbol> by lazy { _standardSymbolLookup }
-        private val _standardSymbolLookup = LinkedHashMap<String, BasicLSymbol>()
+        val standardSymbolLookup = SymbolSet()
         init { listOf(
             BasicLSymbol("F", 1, "Forward", LWord.Forward::class),
             BasicLSymbol("f", 1, "Forward, no draw", LWord.ForwardNoDraw::class),
@@ -19,29 +19,26 @@ sealed interface LSymbol {
             BasicLSymbol("/", 1, "Roll over", LWord.Over::class),
             BasicLSymbol("[", 0, "Save turtle state", LWord.BracketL::class),
             BasicLSymbol("]", 0, "Load state (LIFO)", LWord.BracketR::class),
-            BasicLSymbol("A", 0, "Apex", LWord.Apex::class) //todo classification/IntermediateSymbol
             //todo extract strings, maybe associate full explanations
-        ).forEach { _standardSymbolLookup[it.symbol] = it }}
+        ).forEach { standardSymbolLookup.symbols[it.symbol] = it }}
 
         //convert compound/custom letters (poss. param'd) into sentence of LWords
         //fun parseAlias Todo
 
         //turn text into machine words
-        fun parseStandard(sym : String, vararg params : Float) : LWord {
-            val ls = _standardSymbolLookup[sym]
+        fun parseStandard(sym : String, vararg params : Float, symbolSet : SymbolSet = standardSymbolLookup) : LWord {
             fun squawk() : Nothing = throw Error("Error reading L-system from plaintext\nsymbol: $sym(${params.contentToString()}) nparams:${ls?.nParams}}")
-            return if (ls != null) {
-                //if (BuildConfig.DEBUG) if(params.size != ls.nParams) squawk() //todo revamp all
-                if(params.size == 1) ls.objectClass.constructors.first().call(params[0])
-                else ls.objectClass.objectInstance ?: ls.objectClass.constructors.first().call(Float.NaN) //todo all bollocks
-            } else LWord.Apex.also {
-                if (BuildConfig.DEBUG) squawk()
+            return symbolSet.symbols[sym]!!.let { ls ->
+                if (params.size == 1) ls.objectClass.constructors.first().call(params[0])
+                else ls.objectClass.objectInstance ?: ls.objectClass.constructors.first()
+                    .call(Float.NaN) //todo all bollocks
             }
+            if (BuildConfig.DEBUG) squawk()
         }
     }
 }
 
-//"custom symbol" which notates some hopefully small sentence of others
+//"custom symbol" which notates some hopefully small sentence of others - for example ABOP pg. 7
 data class CustomSymbol(
     override val symbol : String,
     override val nParams: Int,

@@ -16,27 +16,38 @@ class TreeLSystem(initial : LList, private val prod : Array<Rule>) {
         private vararg val fPWord : (FloatArray) -> Float //given the LHS params, produce each param value
     ){
         //todo review this file. line below appears wrong for comma separated params
-        private val inParams = FloatArray(beforeTemplate.count{ it is LWord.ParametricWord })
+        private val inParams = FloatArray(beforeTemplate.sumOf { it.p.size }) //TODO
         private var matchIndex = 0
+        private var paramsIndex = 0
         fun beginMatch() {
             matchIndex = 0
+            paramsIndex = 0
         }
         fun match(s : LWord) : LStr? {
             if(s::class == beforeTemplate[matchIndex]::class){
-                if(s is LWord.ParametricWord){
-                    inParams[matchIndex] = s.a
+                for(i in s.p.indices) {
+                    inParams[paramsIndex++] = s.p[i]
                 }
                 if(++matchIndex == beforeTemplate.size) {
                     matchIndex = 0
+                    paramsIndex = 0
                     var iF = 0
-                    return LStr(afterTemplate.size) {
-                        val sym = afterTemplate[it]
-                        if(sym is LWord.ParametricWord) sym.withValue(fPWord[iF++](inParams))
+                    return LStr(afterTemplate.size) { iLWord ->
+                        val sym = afterTemplate[iLWord]
+                        if(sym.p.isNotEmpty()) { //if any parameters, fill them in
+                            val outParamsForSym = FloatArray(sym.p.size) {
+                                fPWord[iF++](inParams)
+                            }
+                            sym.withValues(*outParamsForSym)
+                        }
                         else sym
                     }
                 }
             }
-            else matchIndex = 0
+            else {
+                matchIndex = 0
+                paramsIndex = 0
+            }
             return null
         }
     }

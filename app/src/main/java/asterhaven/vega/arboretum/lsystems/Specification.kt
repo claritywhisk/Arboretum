@@ -30,9 +30,11 @@ data class Specification(
         val initialParsed = LList().also {
             val m = SpecificationRegexAndValidation.patWord.matcher(initial.remSpace())
             while (m.find()) {
-                it += when (val p = m.group(3)) {
+                it += when (val args = m.group(3)) {
                     null -> LSymbol.parseStandard(m.group(1)!!)
-                    else -> LSymbol.parseStandard(m.group(1)!!, constants[p] ?: p.toFloat()) //is it in constants?
+                    else -> LSymbol.parseStandard(m.group(1)!!, *args.split(',').map { p ->
+                        constants[p] ?: p.toFloat() //is it in constants?
+                    }.toFloatArray())
                 }
             }
         }
@@ -45,9 +47,9 @@ data class Specification(
                 m.reset()
                 return LStr(x) {
                     m.find()
-                    val p = m.group(3)
-                    if (p != null) onParam(p)
-                    LSymbol.parseStandard(m.group(1)!!)
+                    val args = m.group(3)
+                    args?.split(',')?.forEach { onParam(it) }
+                    LSymbol.parseStandard(m.group(1)!!) //ToDo probably need more to handle nonbasic symbols
                 }
             }
 
@@ -59,8 +61,7 @@ data class Specification(
                 //this is a possible area to expand logic
                 //given should be numeric or defined constants, strings in 'param', or * the multiplication sign
                 var coeff = 1f
-                val terms: ArrayList<Int> = arrayListOf() //
-                //todo review. need to split by comma first
+                val terms: ArrayList<Int> = arrayListOf()
                 it.split("*").forEach { token ->
                     if (constants.containsKey(token)) coeff *= constants[token]!!
                     else if (ruleParam.containsKey(token)) terms.add(ruleParam[token]!!)

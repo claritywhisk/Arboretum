@@ -1,6 +1,7 @@
 package asterhaven.vega.arboretum.graphics
 
 import android.opengl.Matrix
+import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.lsystems.LWord
 import asterhaven.vega.arboretum.lsystems.LWord.*
 import asterhaven.vega.arboretum.graphics.draw.Tree
@@ -50,13 +51,12 @@ object Turtle {
         val branches : ArrayList<CommonShape> = arrayListOf()
         var width = -1f
         for(s in string) when(s){
-            Apex -> continue
             BracketL -> stack.addLast(State( //push a state copy onto stack
                 stack.last().pos,
                 Orientation(Matrix4X4(stack.last().orientation.HLU.floatArrayValue.clone()))
             ))
             BracketR -> stack.removeLast() //...pop one
-            is ParametricWord -> when(s){
+            is VanillaWord -> when(s){
                 is SetWidth -> width = s.a
                 is Forward, is ForwardNoDraw -> {
                     val here = stack.last()
@@ -65,6 +65,10 @@ object Turtle {
                     here.pos += here.heading * s.a
                 }
                 is TurtleRotation -> stack.last().orientation.performRotation(s.axis, s.a)
+            }
+            is OtherWord -> {
+                //don't we expect only basic symbols here?
+                if(BuildConfig.DEBUG) throw UnsupportedOperationException()
             }
         }
         return Tree.Structure(branches, arrayListOf())

@@ -5,7 +5,7 @@ import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
 import dev.nesk.akkurate.ValidationResult
 
 object Systems {
-    val list : List<Specification> by lazy { listOf(page25, page60) }
+    val list : List<Specification> by lazy { listOf(page25, page56, page60) } //Todo from db
     private val page25 by lazy { specify {
         name("Page 25")
         constant("δ", 30f)
