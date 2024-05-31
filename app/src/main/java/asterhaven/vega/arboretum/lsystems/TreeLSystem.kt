@@ -94,6 +94,9 @@ class TreeLSystem(initial : LList, private val prod : Array<Rule>) {
                 }
             takeUnmatched(string.lastIndex)
             string = new
+            println("Computering step $n given $givenStep iteration $it") //todo fix and comment
+            string.forEach { w -> print(w) }
+            println()
         }
         return string
     }

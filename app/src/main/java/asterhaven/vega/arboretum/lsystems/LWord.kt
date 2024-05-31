@@ -15,9 +15,9 @@ sealed class LWord(vararg val p : Float) {
             is SetWidth -> SetWidth(a[0])
             is Forward -> Forward(a[0])
             is ForwardNoDraw -> ForwardNoDraw(a[0])
-            is And ->   And(a[0])
-            is Over ->  Over(a[0])
-            is Plus ->  Plus(a[0])
+            is And ->   And(TurtleRotation.degFromRad(a[0])) //never forget, maybe refactor
+            is Over ->  Over(TurtleRotation.degFromRad(a[0]))
+            is Plus ->  Plus(TurtleRotation.degFromRad(a[0]))
         }
     }
     class OtherWord(private val sym : String, vararg a : Float) : LWord(*a) {
@@ -29,7 +29,12 @@ sealed class LWord(vararg val p : Float) {
     class ForwardNoDraw(a : Float) : VanillaWord(a)
     sealed class TurtleRotation(open val ang : Float, val axis : Turtle.Axis)
         //** Convert the actual value to radians **
-        : VanillaWord(Math.PI.toFloat() * ang / 180f)
+        : VanillaWord(radFromDeg(ang)) {
+            companion object {
+                fun radFromDeg(deg : Float) = Math.PI.toFloat() * deg / 180f
+                fun degFromRad(rad : Float) = 180f * rad / Math.PI.toFloat()
+            }
+        }
     // turn left by angle a, see page 19 of Alg Beaut o' Plants
     data class Plus(override val ang : Float) : TurtleRotation(ang, Turtle.Up)
     // pitch down using R_L
