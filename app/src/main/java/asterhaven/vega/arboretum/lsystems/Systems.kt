@@ -42,7 +42,7 @@ object Systems {
         constant("w₀", .0035f) //TODO sizing
         constant("h₀", .29f)
         initial("!(w₀)F(h₀)/(45)A")
-        productions(
+        productions( //Todo this was not faithful to the book in order to be visible!!
             "A","!(w₀*vᵣ)F(.25*h₀)[&(a)F(.25*h₀)A]/(d₁)[&(a)F(.25*h₀)A]/(d₂)[&(a)F(.25*h₀)A]",
             "F(l)","F(l*lᵣ)",
             "!(w)","!(w*vᵣ)"

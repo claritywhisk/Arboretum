@@ -141,6 +141,7 @@ private class MutableParam(sym: String, name: String, type: ParameterType, initi
     val initialValue = mutableFloatStateOf(initialValue)
     fun make() : LParameter = LParameter(symbol.value.text, name.value, type.value, initialValue.floatValue)
 }
+//not sure we need everything in this or just the parameter names
 val commonSymbols : MutableList<String> = mutableListOf<String>().apply {
     SymbolSet.standard.list.forEach { add(it.symbol) }
 }
@@ -186,11 +187,15 @@ fun RulesScreen(
     val productionRules = remember { mutableStateListOf<MutableProduction>().apply {
         baseSpecification.productions.forEach { add(MutableProduction(it.before, it.after)) }
     } }
-    val symbols = remember { SnapshotStateListWrapper(mutableStateListOf<MutableSymbol>()) } //todo load symbols?
+    val symbols = remember { SnapshotStateListWrapper(mutableStateListOf<MutableSymbol>()).apply {
+        baseSpecification.symbolSet.list.forEach {
+            add(MutableSymbol(it.symbol, it.nParams, it.desc,
+                if(it is CustomSymbol) it.aliases else MutableSymbol.NOT_ALIAS_SYMBOL))
+        }
+    } }
     val newParams = remember { SnapshotStateListWrapper(mutableStateListOf<MutableParam>()).apply {
         baseSpecification.params.forEach {
             add(MutableParam(it.symbol, it.name, it.type, it.initialValue))
-            commonSymbols.add(it.symbol)
         }
     } }
 
