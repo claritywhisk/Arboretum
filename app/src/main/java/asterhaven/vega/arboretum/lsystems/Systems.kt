@@ -22,12 +22,12 @@ object Systems {
         param("a₂", 45f, "branching angle for lateral axes", AngleAcute)
         param("d", 137.5f, "divergence angle", AngleObtuse)
         param("wᵣ", 0.707f, "width decrease rate", UnitInterval)
-        constant("l₀", 1f)
+        constant("l₀", 1f) //TODO sizing general
         constant("w₀", 10f)
         initial("A(l₀,w₀)")
         productions(
             "A(l,w)", "!(w)F(l)[&(a₀)B(l*r₂,w*wᵣ)]/(d)A(l*r₁,w*wᵣ)",
-            "B(l,w)", "!(w)F(l)[-(a₂)\$C(l*r₂,w*w₂)]C(l*r₁,w*w₂)",
+            "B(l,w)", "!(w)F(l)[-(a₂)\$C(l*r₂,w*wᵣ)]C(l*r₁,w*wᵣ)", //todo $ symbol
             "C(l,w)", "!(w)F(l)[+(a₂)\$B(l*r₂,w*wᵣ)]B(l*r₁,w*wᵣ)"
         )
     }}

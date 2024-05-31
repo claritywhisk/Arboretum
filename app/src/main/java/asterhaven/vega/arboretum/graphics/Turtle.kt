@@ -67,8 +67,7 @@ object Turtle {
                 is TurtleRotation -> stack.last().orientation.performRotation(s.axis, s.a)
             }
             is OtherWord -> {
-                //don't we expect only basic symbols here?
-                if(BuildConfig.DEBUG) throw UnsupportedOperationException()
+                //intermediate symbol, do nothing
             }
         }
         return Tree.Structure(branches, arrayListOf())

@@ -37,7 +37,7 @@ data class Specification(
             if(w != null && w.p.size == nParams)
                 return if(nParams == 0) w else w.withValues(*params)
             else throw Error("Error reading L-system from plaintext\n" +
-                    "symbol: $sym(${params.contentToString()}) nParams ${nParams}/${w?.p?.size}")
+                    "symbol: $sym(${params.contentToString()}) nParams $nParams word $w expecting ${w?.p?.size} params")
         }
         val initialParsed = LList().apply {
             val m = SpecificationRegexAndValidation.patWord.matcher(initial.remSpace())
@@ -55,9 +55,11 @@ data class Specification(
                 m.reset()
                 return LStr(x) {
                     m.find()
-                    val args = m.group(3)
-                    args?.split(',')?.forEach { onParam(it) }
-                    parse(m.group(1)!!)
+                    val args = m.group(3)?.split(',')
+                    args?.forEach { onParam(it) }
+                    //no need to parse the arguments for a template,
+                    //but a placeholder (NaN) is expected
+                    parse(m.group(1)!!, *FloatArray(args?.size ?: 0) { Float.NaN } )
                 }
             }
 
@@ -74,7 +76,8 @@ data class Specification(
                     if (constants.containsKey(token)) coeff *= constants[token]!!
                     else if (ruleParam.containsKey(token)) terms.add(ruleParam[token]!!)
                     else {
-                        if (coeff != 1f || terms.size > 0) throw IllegalArgumentException("in RHS of production")
+                        if (coeff != 1f || terms.size > 0) throw IllegalArgumentException(
+                            "in RHS of production: "+ productions[rI].after +" offending token $token")
                         coeff = token.toFloat()
                     }
                 }

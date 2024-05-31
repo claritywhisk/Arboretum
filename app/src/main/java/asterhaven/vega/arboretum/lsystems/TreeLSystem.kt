@@ -15,8 +15,7 @@ class TreeLSystem(initial : LList, private val prod : Array<Rule>) {
         private val afterTemplate: LStr,
         private vararg val fPWord : (FloatArray) -> Float //given the LHS params, produce each param value
     ){
-        //todo review this file. line below appears wrong for comma separated params
-        private val inParams = FloatArray(beforeTemplate.sumOf { it.p.size }) //TODO
+        private val inParams = FloatArray(beforeTemplate.sumOf { it.p.size })
         private var matchIndex = 0
         private var paramsIndex = 0
         fun beginMatch() {

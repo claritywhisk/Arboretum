@@ -46,7 +46,7 @@ class ArboretumViewModel : ViewModel() {
     val params : State<List<ViewModelParamWrapper>> = _params
 
     init {
-        updateSpecification(Systems.list[Systems.list.lastIndex])
+        updateSpecification(Systems.list[1])
     }
 
     private val _leavingScreen : MutableState<ArboretumScreen?> = mutableStateOf(null)

@@ -230,7 +230,7 @@ fun RulesScreen(
         else -> listOf()
     }
 
-    fun tryNewSpecification() {
+    fun tryNewSpecification() : Boolean {
         val newSpecification = Specification(
             name ="todo",
             initial = axiom.initial.value.text,
@@ -241,18 +241,21 @@ fun RulesScreen(
             },
             symbolSet = SymbolSet().apply {
                 symbols.forEach {
-                    //TODO
+                    this.add(it.make())
                 }
             }
         )
+        var success = false
         when(val result = SpecificationRegexAndValidation.validateSpecification(newSpecification)){
             is ValidationResult.Success -> {
                 errorOverall = null
                 updateSpecification(newSpecification)
+                success = true
             }
             is ValidationResult.Failure -> errorOverall = result
         }
         formUnvalidated = false
+        return success
     }
     fun tryRow() {
         fun <T> valRes(item : T, vf : Validator.Runner<T>) = when(val result =
@@ -813,8 +816,8 @@ fun RulesScreen(
     val context = LocalContext.current
     LaunchedEffect(leavingScreen){
         if(leavingScreen == ArboretumScreen.Rules){
-            tryNewSpecification()
-            if(formUnvalidated && errorOverall != null) Toast.makeText(context,
+            //see tryNewSpecification() logic
+            if(formUnvalidated && !tryNewSpecification()) Toast.makeText(context,
                 context.getString(R.string.rules_msg_abandon_invalid),
                 Toast.LENGTH_LONG).show()
         }
