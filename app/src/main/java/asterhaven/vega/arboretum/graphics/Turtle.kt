@@ -66,9 +66,7 @@ object Turtle {
                 }
                 is TurtleRotation -> stack.last().orientation.performRotation(s.axis, s.a)
             }
-            is OtherWord -> {
-                //intermediate symbol, do nothing
-            }
+            is OtherWord -> continue
         }
         return Tree.Structure(branches, arrayListOf())
     }
