@@ -71,6 +71,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.OffsetMapping
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.input.TransformedText
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
@@ -279,7 +280,9 @@ fun RulesScreen(
     }
 
     @Composable
-    fun EccentricTextField(msTextField: MutableState<TextFieldValue>, modifier: Modifier = Modifier) {
+    fun EccentricTextField(msTextField: MutableState<TextFieldValue>,
+                           modifier: Modifier = Modifier,
+                           rightAlign : Boolean = false) {
         val focusRequester = remember { FocusRequester() } //todo any use?
         val interactionSource = remember { MutableInteractionSource() }
         val keyboardController = LocalSoftwareKeyboardController.current
@@ -298,6 +301,9 @@ fun RulesScreen(
                 delay(500)
                 showCursor = !showCursor
             }
+        }
+        val textStyle = (if(isDetailView()) arbClickableTextStyle() else arbPlainTextStyle()).let {
+            if(rightAlign) it.copy(textAlign = TextAlign.End) else it
         }
         BasicTextField(
             value = msTextField.value,
@@ -318,7 +324,7 @@ fun RulesScreen(
             modifier = mod,
             enabled = isDetailView(),
             readOnly = true,
-            textStyle = if(isDetailView()) arbClickableTextStyle() else arbPlainTextStyle(),
+            textStyle = textStyle,
             singleLine = false,
             visualTransformation = { annoStr : AnnotatedString ->
                 TransformedText(buildAnnotatedString {
@@ -631,9 +637,24 @@ fun RulesScreen(
     fun ItemSym(s : MutableSymbol, del : @Composable () -> Unit = {}) {
         fun isAliasSymbol() = s.aliases.value.text != MutableSymbol.NOT_ALIAS_SYMBOL
         var isOptionsExpand by remember { mutableStateOf(false) }
+        var nParamsString by remember { mutableStateOf("")}
+        fun addToParamsString(n : Int, b4 : Int) {
+            //add, sparing existing
+            val sb = StringBuilder()
+            sb.append(if (b4 == 0) "( " else nParamsString.substring(0, nParamsString.lastIndex)) //remove )
+            val commas = n - b4 - if(b4 == 0) 1 else 0
+            repeat(commas) { sb.append(", ") }
+            sb.append(")")
+            nParamsString = sb.toString()
+        }
+        LaunchedEffect(Unit) {
+            addToParamsString(s.nParams.intValue, 0)
+        }
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                EccentricTextField(s.symbol)
+                //the pair of symbol and argument count indication
+                EccentricTextField(s.symbol, rightAlign = true)
+                Text(nParamsString, textAlign = TextAlign.Start)
                 if (isAliasSymbol()) {
                     Text("=")
                     EccentricTextField(s.aliases)
@@ -655,34 +676,24 @@ fun RulesScreen(
                     (0..3).forEach { n ->
                         RadioButton(selected = s.nParams.intValue == n, onClick = {
                             when (val b4 = s.nParams.intValue) {
-                                in 0 until n -> { //add, sparing existing
-                                    val sb = StringBuilder()
-                                    sb.append(s.symbol.value.let {
-                                        if (b4 == 0) "$it( "
-                                        else it.text.substring(0, it.text.lastIndex) //remove )
-                                    })
-                                    val commas = n - b4 - if(b4 == 0) 1 else 0
-                                    repeat(commas) { sb.append(", ") }
-                                    sb.append(")")
-                                    s.symbol.value = TextFieldValue(sb.toString())
-                                }
+                                in 0 until n -> addToParamsString(n, b4)
                                 in n..n -> {} //no action
                                 else -> { //delete from end
                                     fun ans(): String {
                                         var commasAccepted = n - 1
-                                        s.symbol.value.let {
-                                            for (i in it.text.indices) when (it.text[i]) {
-                                                '(' -> if (n == 0) return it.text.substring(0, i)
-                                                ',' -> if (commasAccepted-- == 0) return it.text.substring(
+                                        nParamsString.let {
+                                            for (i in it.indices) when (it[i]) {
+                                                '(' -> if (n == 0) return ""
+                                                ',' -> if (commasAccepted-- == 0) return it.substring(
                                                     0,
                                                     i
                                                 ) + ")"
                                             }
                                             if (BuildConfig.DEBUG) check(false) //supposed to be reducing # args
-                                            return it.text
+                                            return it
                                         }
                                     }
-                                    s.symbol.value = TextFieldValue(ans())
+                                    nParamsString = ans()
                                 }
                             }
                             s.nParams.intValue = n
