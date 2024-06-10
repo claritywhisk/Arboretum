@@ -1,5 +1,6 @@
 package asterhaven.vega.arboretum.lsystems
 
+import asterhaven.vega.arboretum.data.model.CanonicalSpecification
 import asterhaven.vega.arboretum.data.model.SymbolSet
 import dev.nesk.akkurate.annotations.Validate
 
@@ -12,16 +13,21 @@ import dev.nesk.akkurate.annotations.Validate
 )
 //a replacement rule
 @Validate data class LProduction(val before: String, val after: String)
-//a representation of an L-system, with metadata, input from text possibly with spaces
+//a representation of an L-system, with metadata, input from rules screen or text possibly with spaces
+
 @Validate
-data class Specification(
+class Specification(
     val name : String, //todo metadata object
     val initial : String,
     val productions : List<LProduction> = arrayListOf(),
     val params : List<LParameter> = arrayListOf(),
-    val constants : HashMap<String, Float> = HashMap(), //symbols from params
-    val symbolSet : SymbolSet
+    val symbolSet : SymbolSet,
+    val constants : HashMap<String, Float>, //symbols from params taking on values
 ) {
+    constructor(cs : CanonicalSpecification) : this(cs.name, cs.initial, cs.productions,
+        cs.params, SymbolSet(cs.symbolSet), HashMap<String, Float>().apply {
+            cs.params.forEach { p -> this[p.symbol] = p.initialValue }
+        })
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
         constants[symbol] = value

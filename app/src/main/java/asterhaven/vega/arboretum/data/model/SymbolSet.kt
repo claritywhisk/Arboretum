@@ -4,10 +4,12 @@ import asterhaven.vega.arboretum.lsystems.BasicLSymbol
 import asterhaven.vega.arboretum.lsystems.LSymbol
 import asterhaven.vega.arboretum.lsystems.LWord
 
-class SymbolSet {
-    val list : ArrayList<LSymbol> = ArrayList()
+class SymbolSet(
+    val list : ArrayList<LSymbol> = ArrayList(),
     val word : HashMap<String, LWord> = HashMap()
-    //todo metadata
+) {
+    constructor(css : CanonicalSymbolSet) : this(css.list)
+
     companion object {
         val standard = LSymbol.standardSymbols
     }

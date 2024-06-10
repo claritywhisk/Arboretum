@@ -242,13 +242,13 @@ fun RulesScreen(
             initial = axiom.initial.value.text,
             productions = productionRules.toList().map { it.make() } ,
             params = newParams.toList().map { it.make() },
-            constants = HashMap<String, Float>().apply {
-                newParams.map { it.make() }.forEach { p -> this[p.symbol] = p.initialValue }
-            },
             symbolSet = SymbolSet().apply {
                 symbols.forEach {
                     this.add(it.make())
                 }
+            },
+            constants = HashMap<String, Float>().apply {
+                newParams.map { it.make() }.forEach { p -> this[p.symbol] = p.initialValue }
             }
         )
         var success = false

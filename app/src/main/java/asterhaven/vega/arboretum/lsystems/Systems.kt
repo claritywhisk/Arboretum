@@ -98,7 +98,7 @@ class SpecificationBuilder {
         if(!hasSteps) param("", DEFAULT_STEPS.toFloat(), "Steps",
             DerivationSteps(DEFAULT_STEPS_SLIDER_MAX))
     }
-    fun build() = Specification(n, i, pr, pa, cons, nonbasicSymbols)
+    fun build() = Specification(n, i, pr, pa, nonbasicSymbols, cons)
 }
 
 fun specify(lambda : SpecificationBuilder.()-> Unit) : Specification {
