@@ -1,8 +1,6 @@
-package asterhaven.vega.arboretum.data.model
+package asterhaven.vega.arboretum.lsystems
 
-import asterhaven.vega.arboretum.lsystems.BasicLSymbol
-import asterhaven.vega.arboretum.lsystems.LSymbol
-import asterhaven.vega.arboretum.lsystems.LWord
+import asterhaven.vega.arboretum.data.model.CanonicalSymbolSet
 
 class SymbolSet(
     val list : ArrayList<LSymbol> = ArrayList(),

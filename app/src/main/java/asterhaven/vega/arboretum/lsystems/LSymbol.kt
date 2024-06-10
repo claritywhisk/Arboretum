@@ -1,7 +1,5 @@
 package asterhaven.vega.arboretum.lsystems
 
-import asterhaven.vega.arboretum.data.model.SymbolSet
-
 //essentially view-level, while LWord is model
 sealed interface LSymbol {
     val symbol: String

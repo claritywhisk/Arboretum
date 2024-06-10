@@ -76,7 +76,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import asterhaven.vega.arboretum.BuildConfig
 import asterhaven.vega.arboretum.R
-import asterhaven.vega.arboretum.data.model.SymbolSet
+import asterhaven.vega.arboretum.lsystems.SymbolSet
 import asterhaven.vega.arboretum.lsystems.Constant
 import asterhaven.vega.arboretum.lsystems.Custom
 import asterhaven.vega.arboretum.lsystems.CustomSymbol

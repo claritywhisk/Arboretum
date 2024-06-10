@@ -1,7 +1,6 @@
 package asterhaven.vega.arboretum.lsystems
 
 import asterhaven.vega.arboretum.data.model.CanonicalSpecification
-import asterhaven.vega.arboretum.data.model.SymbolSet
 import dev.nesk.akkurate.annotations.Validate
 
 //a variable which becomes a number

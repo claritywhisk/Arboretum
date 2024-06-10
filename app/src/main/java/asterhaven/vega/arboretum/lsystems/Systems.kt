@@ -1,6 +1,5 @@
 package asterhaven.vega.arboretum.lsystems
 
-import asterhaven.vega.arboretum.data.model.SymbolSet
 import asterhaven.vega.arboretum.utility.DEFAULT_STEPS
 import asterhaven.vega.arboretum.utility.DEFAULT_STEPS_SLIDER_MAX
 import dev.nesk.akkurate.ValidationResult
