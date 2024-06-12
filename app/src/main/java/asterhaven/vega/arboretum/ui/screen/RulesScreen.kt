@@ -189,7 +189,7 @@ fun RulesScreen(
         baseSpecification.productions.forEach { add(MutableProduction(it.before, it.after)) }
     } }
     val symbols = remember { SnapshotStateListWrapper(mutableStateListOf<MutableSymbol>()).apply {
-        baseSpecification.symbolSet.list.forEach {
+        baseSpecification.nonbasicSymbols.list.forEach {
             add(MutableSymbol(it.symbol, it.nParams, it.desc,
                 if(it is CustomSymbol) it.aliases else MutableSymbol.NOT_ALIAS_SYMBOL))
         }
@@ -242,7 +242,7 @@ fun RulesScreen(
             initial = axiom.initial.value.text,
             productions = productionRules.toList().map { it.make() } ,
             params = newParams.toList().map { it.make() },
-            symbolSet = SymbolSet().apply {
+            nonbasicSymbols = SymbolSet().apply {
                 symbols.forEach {
                     this.add(it.make())
                 }

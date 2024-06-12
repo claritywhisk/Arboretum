@@ -3,6 +3,8 @@ package asterhaven.vega.arboretum.lsystems
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
+// ! note any changes must be mirrored in serialization logic
+
 sealed class ParameterType(val range : ClosedFloatingPointRange<Float>){
     constructor(min : Float, max : Float) : this(min .. max)
 }
@@ -11,7 +13,7 @@ sealed class IntParameterType(min : Int = 0, max : Int, private val gap : Int = 
     fun rungsCount() = ((range.endInclusive.roundToInt() - range.start.roundToInt())/gap) - 1
 }
 
-class DerivationSteps(max : Int) : IntParameterType(max = max)
+data class DerivationSteps(val max : Int) : IntParameterType(max = max)
 
 sealed interface MenuPT {
     val name : String

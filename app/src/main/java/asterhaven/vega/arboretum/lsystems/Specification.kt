@@ -1,6 +1,5 @@
 package asterhaven.vega.arboretum.lsystems
 
-import asterhaven.vega.arboretum.data.model.CanonicalSpecification
 import dev.nesk.akkurate.annotations.Validate
 
 //a variable which becomes a number
@@ -20,13 +19,9 @@ class Specification(
     val initial : String,
     val productions : List<LProduction> = arrayListOf(),
     val params : List<LParameter> = arrayListOf(),
-    val symbolSet : SymbolSet,
+    val nonbasicSymbols : SymbolSet,
     val constants : HashMap<String, Float>, //symbols from params taking on values
 ) {
-    constructor(cs : CanonicalSpecification) : this(cs.name, cs.initial, cs.productions,
-        cs.params, SymbolSet(cs.symbolSet), HashMap<String, Float>().apply {
-            cs.params.forEach { p -> this[p.symbol] = p.initialValue }
-        })
     fun updateConstant(symbol: String, value: Float): Boolean {
         if (constants[symbol] == value) return false
         constants[symbol] = value
@@ -38,7 +33,7 @@ class Specification(
         fun parse(sym : String, vararg params : Float) : LWord {
             val nParams = params.size
             //check the auxiliary
-            val w = symbolSet.word[sym] ?: LSymbol.standardSymbols.word[sym]
+            val w = nonbasicSymbols.word[sym] ?: LSymbol.standardSymbols.word[sym]
             if(w != null && w.p.size == nParams)
                 return if(nParams == 0) w else w.withValues(*params)
             else throw Error("Error reading L-system from plaintext\n" +

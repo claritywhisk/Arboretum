@@ -5,4 +5,4 @@ const val DEFAULT_STEPS = 5
 const val DEFAULT_STEPS_SLIDER_MAX = 6 //8 or 9 fine for preview
 const val DELAY_PER_STEP_MS = 125L
 
-const val SYSTEMS_INITIAL_STORE = false
+const val SYSTEMS_INITIAL_STORE = true //todo overwrite working?
